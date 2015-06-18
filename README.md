@@ -143,17 +143,18 @@ Status:
 ## Short term ToDos
 Things Vasco still needs:
 
-    * Make ports and other info configurable
-        * Ability to insert URL into swagger
-        * Generate proper 404s
-    * Clean up documentation for godoc
-    * Moar errors
-    * Separate util library
-    * Separate stringset library
-    * Start checking status URLs
-    * Clean up status URL stuff
+* Make ports and other info configurable
+    * Ability to insert URL into swagger
+    * Generate proper 404s
+* Clean up documentation for godoc
+* Moar errors
+* Separate util library
+* Separate stringset library
+* Start checking status URLs
+* Clean up status URL stuff
 
 ## Longer term
-    * Add support for load balancing strategies
-    * Support storing all the information in a Redis store so that multiple load balancers can run and will cooperate on things like "sticky" and "roundrobin" strategy -- AWS ElastiCache supports Redis. The design of the memory cache borrows directly from Redis, and the cache is a pluggable item, so it should be simple to create a Redis version of the cache.
+
+* Add support for load balancing strategies
+* Support storing all the information in a Redis store so that multiple load balancers can run and will cooperate on things like "sticky" and "roundrobin" strategy -- AWS ElastiCache supports Redis. The design of the memory cache borrows directly from Redis, and the cache is a pluggable item, so it should be simple to create a Redis version of the cache.
 
