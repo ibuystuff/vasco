@@ -18,6 +18,7 @@ The basic idea is that servers register themselves (or are registered in a confi
 * Vasco receives queries and reverse-proxies them to the servers.
 
 ## API
+
 (items with [x] are implemented, [ ] not yet)
 
     Main server listens on two address/ports, internal and external. Both are configured in the environment.
@@ -58,12 +59,15 @@ The basic idea is that servers register themselves (or are registered in a confi
 Registration is a JSON object that supports the following fields:
 
 name:
+
     An arbitrary name string that is used in status reporting.
 
 address:
+
     The HTTP scheme and host (IP/port combination) used for forwarding requests
 
 pattern:
+
     pattern: A regex match for the path starting at the leading slash.
     Note that the use of a regex implies that you need to be careful about the trailing
     elements of your pattern. If you mean "/tags/" you have to say "/tags/" not "/tags".
@@ -78,6 +82,7 @@ pattern:
     If a forwarded request times out, the server is immediately marked with a status of "down".
 
 strategy:
+
     strategy: "roundrobin" or "random" or "stickyrandom" or "stickyroundrobin"
     This controls how requests are routed.
         Roundrobin cycles between servers for a given request in a fixed order
@@ -87,9 +92,11 @@ strategy:
     [ ] Sticky and roundrobin are not yet implemented (and probably won't be for a while)
 
 ttl:
+
     [ ] Only used for a sticky strategy -- controls how long an IP lives in the cache. Specify a time in integer numbers of seconds. Default is 15 minutes (900 seconds)
 
 status:
+
     [ ] A JSON object specifying the status behavior:
     path:
         specify the path to be used to check status of the server (this path is concatenated with the address field to build a status query). A 200 reply means the server is up and functioning. A JSON payload may be delivered with more detailed status information; it is not inspected, merely returned as part of the discover server's status block. Default is myAddr/status.
@@ -135,6 +142,7 @@ Status:
 
 ## Short term ToDos
 Things Vasco still needs:
+
     * Make ports and other info configurable
         * Ability to insert URL into swagger
         * Generate proper 404s
