@@ -268,10 +268,10 @@ func main() {
 
 	// Optionally, you can install the Swagger Service which provides a nice Web UI on your REST API
 	// You need to download the Swagger HTML5 assets and change the FilePath location in the config below.
-	// Open http://localhost:8090/apidocs and enter http://localhost:8090/apidocs.json in the api input field.
+	// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
 	config := swagger.Config{
 		WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
-		WebServicesUrl: "http://localhost:8090",
+		WebServicesUrl: "http://localhost:8080",
 		ApiPath:        "/apidocs.json",
 		ApiVersion:     "0.1.0",
 		// Someday we want to have a little more documentation, and we might want to add some additional
@@ -283,22 +283,19 @@ func main() {
 		// This needs to point to a copy of the dist folder in the docs that can be fetched with:
 		// git clone https://github.com/swagger-api/swagger-ui.git
 		// Use the dist folder there, and then change the index.html file in it to point to this.
-		// url = "http://localhost:8090/apidocs.json";
+		// url = "http://localhost:8080/apidocs.json";
 		SwaggerFilePath: "./swagger-ui/dist",
-		PostBuildHandler: func(apiDeclarationMap map[string]swagger.ApiDeclaration) {
-			// fmt.Printf("*** %v\n", apiDeclarationMap)
-			// apiDeclarationMap["apiVersion"] = "0.0.2"
-		}}
+	}
 	swagger.RegisterSwaggerService(config, wsContainer)
 
 	serverErrors := make(chan error)
 
-	log.Printf("forwarder listening on localhost:8091")
-	forwarder := &http.Server{Addr: ":8091", Handler: NewMatchingReverseProxy(&v)}
+	log.Printf("forwarder listening on localhost:8081")
+	forwarder := &http.Server{Addr: ":8081", Handler: NewMatchingReverseProxy(&v)}
 	go LandS(forwarder, serverErrors)
 
-	log.Printf("registry listening on localhost:8090")
-	server := &http.Server{Addr: ":8090", Handler: wsContainer}
+	log.Printf("registry listening on localhost:8080")
+	server := &http.Server{Addr: ":8080", Handler: wsContainer}
 	go LandS(server, serverErrors)
 
 	err := <-serverErrors
