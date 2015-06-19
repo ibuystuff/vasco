@@ -17,6 +17,10 @@
 # EXPOSE 8080
 
 
+# note that it does no good to enable swagger on the docker container -- it
+# doesn't work because swagger needs to know where you come from, and
+# so the .dockerignore file excludes the swagger directory
+
 FROM aegypius/golang
 
 WORKDIR /gopath/src/app
@@ -26,5 +30,5 @@ RUN go get
 CMD []
 ENTRYPOINT ["/gopath/bin/app"]
 # Document that the service listens on port 8080 and 8081.
-EXPOSE 8090 8091
+EXPOSE 8080 8081
 

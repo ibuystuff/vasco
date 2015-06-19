@@ -241,7 +241,9 @@ func main() {
 	restful.TraceLogger(log.New(os.Stdout, "[restful] ", log.LstdFlags|log.Lshortfile))
 
 	var kindOfCache string
+	var useSwagger bool
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
+	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
 
 	var v Vasco
@@ -266,27 +268,29 @@ func main() {
 	wsContainer.Router(restful.CurlyRouter{})
 	v.RegisterContainer(wsContainer)
 
-	// Optionally, you can install the Swagger Service which provides a nice Web UI on your REST API
-	// You need to download the Swagger HTML5 assets and change the FilePath location in the config below.
-	// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
-	config := swagger.Config{
-		WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
-		WebServicesUrl: "http://localhost:8080",
-		ApiPath:        "/apidocs.json",
-		ApiVersion:     "0.1.0",
-		// Someday we want to have a little more documentation, and we might want to add some additional
-		// fields to the swagger.Config object to allow us to specify some of the high-level description
-		// stuff (see getListing function).
+	if useSwagger {
+		// Optionally, you can install the Swagger Service which provides a nice Web UI on your REST API
+		// You need to download the Swagger HTML5 assets and change the FilePath location in the config below.
+		// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
+		config := swagger.Config{
+			WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
+			WebServicesUrl: "http://localhost:8080",
+			ApiPath:        "/apidocs.json",
+			ApiVersion:     "0.1.0",
+			// Someday we want to have a little more documentation, and we might want to add some additional
+			// fields to the swagger.Config object to allow us to specify some of the high-level description
+			// stuff (see getListing function).
 
-		// Specify where the UI is located
-		SwaggerPath: "/apidocs/",
-		// This needs to point to a copy of the dist folder in the docs that can be fetched with:
-		// git clone https://github.com/swagger-api/swagger-ui.git
-		// Use the dist folder there, and then change the index.html file in it to point to this.
-		// url = "http://localhost:8080/apidocs.json";
-		SwaggerFilePath: "./swagger-ui/dist",
+			// Specify where the UI is located
+			SwaggerPath: "/apidocs/",
+			// This needs to point to a copy of the dist folder in the docs that can be fetched with:
+			// git clone https://github.com/swagger-api/swagger-ui.git
+			// Use the dist folder there, and then change the index.html file in it to point to this.
+			// url = "http://localhost:8080/apidocs.json";
+			SwaggerFilePath: "./swagger-ui/dist",
+		}
+		swagger.RegisterSwaggerService(config, wsContainer)
 	}
-	swagger.RegisterSwaggerService(config, wsContainer)
 
 	serverErrors := make(chan error)
 
