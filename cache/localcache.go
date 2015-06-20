@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AchievementNetwork/stringset"
 )
 
 type cacheValue struct {
@@ -19,11 +21,11 @@ type cacheValue struct {
 // great for testing or for deploying on a small scale
 type LocalCache struct {
 	values map[string]cacheValue
-	sets   map[string]*StringSet
+	sets   map[string]*stringset.StringSet
 }
 
 func NewLocalCache() *LocalCache {
-	c := LocalCache{values: make(map[string]cacheValue), sets: make(map[string]*StringSet)}
+	c := LocalCache{values: make(map[string]cacheValue), sets: make(map[string]*stringset.StringSet)}
 	return &c
 }
 
@@ -84,9 +86,9 @@ func (c *LocalCache) ExpireAt(key string, timestamp int64) (err error) {
 func (c *LocalCache) SAdd(key string, values []string) (err error) {
 	s, ok := c.sets[key]
 	if !ok {
-		s = NewStringSet()
+		s = stringset.New()
 	}
-	s.AddMultiple(values)
+	s.Add(values...)
 	c.sets[key] = s
 	return
 }
@@ -102,7 +104,7 @@ func (c *LocalCache) SGet(key string) (values []string, err error) {
 
 func (c *LocalCache) SRemove(key string, values []string) (err error) {
 	if s, ok := c.sets[key]; ok {
-		s.DeleteMultiple(values)
+		s.Delete(values...)
 		// if we've removed the last item, delete the key
 		if s.Length() == 0 {
 			delete(c.sets, key)
