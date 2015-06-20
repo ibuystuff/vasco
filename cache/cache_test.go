@@ -131,7 +131,7 @@ func TestExpire(t *testing.T) {
 
 func TestSAddSGet(t *testing.T) {
 	values := []string{"a", "b", "c", "d", "e"}
-	err := c.SAdd("skey", values)
+	err := c.SAdd("skey", values...)
 	assert.Nil(t, err)
 	result, err := c.SGet("skey")
 	assert.Nil(t, err)
@@ -140,9 +140,9 @@ func TestSAddSGet(t *testing.T) {
 
 func TestMultipleAdd(t *testing.T) {
 	values := []string{"a", "b", "c", "d", "e"}
-	err := c.SAdd("skey", []string{"a", "b", "c"})
+	err := c.SAdd("skey", "a", "b", "c")
 	assert.Nil(t, err)
-	err = c.SAdd("skey", []string{"c", "d", "e"})
+	err = c.SAdd("skey", "c", "d", "e")
 	assert.Nil(t, err)
 	result, err := c.SGet("skey")
 	assert.Nil(t, err)
@@ -159,22 +159,21 @@ func TestSCount(t *testing.T) {
 }
 
 func TestSRemove(t *testing.T) {
-	err := c.SRemove("skey", []string{"a", "b", "d"})
+	err := c.SRemove("skey", "a", "b", "d")
 	assert.Nil(t, err)
 	result, err := c.SGet("skey")
 	assert.Nil(t, err)
 	n, _ := c.SCount("skey")
 	assert.Equal(t, 2, n)
 	checkEquivalence(t, []string{"c", "e"}, result)
-	err = c.SRemove("skey", []string{"a", "c", "e"})
+	err = c.SRemove("skey", "a", "c", "e")
 	assert.Nil(t, err)
 	result, err = c.SGet("skey")
 	assert.NotNil(t, err) // skey should have been deleted by previous call
 }
 
 func TestSRandom(t *testing.T) {
-	values := []string{"a", "b", "c", "d", "e"}
-	err := c.SAdd("skey", values)
+	err := c.SAdd("skey", "a", "b", "c", "d", "e")
 	assert.Nil(t, err)
 
 	// generate 1000 random results and make sure they're distributed evenly.

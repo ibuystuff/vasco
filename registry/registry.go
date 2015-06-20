@@ -35,7 +35,7 @@ func (r *Registry) Register(reg *Registration) {
 	if timeout != 0 {
 		r.c.Expire(reg.Hash(), timeout)
 	}
-	r.c.SAdd("Registry:ITEMS", []string{reg.Hash()})
+	r.c.SAdd("Registry:ITEMS", reg.Hash())
 	log.Printf("register %s: %v\n", reg.Hash(), reg.String())
 }
 
@@ -56,7 +56,7 @@ func (r *Registry) Unregister(reg *Registration) {
 	}
 
 	h := reg.Hash()
-	r.c.SRemove("Registry:ITEMS", []string{h})
+	r.c.SRemove("Registry:ITEMS", h)
 	r.c.Delete(h)
 }
 
@@ -82,7 +82,7 @@ func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 		if err != nil {
 			// the hash has expired so delete the corresponding hash item
 			r.c.Delete(hash)
-			r.c.SRemove("Registry:ITEMS", []string{hash})
+			r.c.SRemove("Registry:ITEMS", hash)
 			log.Printf("Expired %s\n", hash)
 			// and call ourselves recursively
 			return r.FindBestMatch(surl)
