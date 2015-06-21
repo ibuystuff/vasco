@@ -6,6 +6,13 @@ The purpose of the server is to provide discovery services to a collection of ot
 
 The basic idea is that servers register themselves (or are registered in a configuration). Vasco then acts as a reverse proxy and load balancer -- queries to the public port are directed to the appropriate server behind the firewall by looking at the request and distributing. Vasco supports multiple instances of a given pattern and can follow different strategies for load balancing.
 
+## Build instructions
+
+    ```bash
+    git clone git@github.com:AchievementNetwork/vasco.git
+    go get
+    go build
+    ```
 
 ## Design
 

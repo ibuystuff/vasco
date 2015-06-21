@@ -1,34 +1,30 @@
-# # Start from a Debian image with the latest version of Go installed
-# # and a workspace (GOPATH) configured at /go.
-# FROM golang
+#
+# Go container based on google/golang
+#
+FROM ubuntu:latest
 
-# # Copy the local package files to the container's workspace.
-# ADD . /go/src/github.com/golang/example/outyet
+ENV DEBIAN_FRONTEND noninteractive
 
-# # Build the outyet command inside the container.
-# # (You may fetch or manage dependencies here,
-# # either manually or with a tool like "godep".)
-# RUN go install github.com/golang/example/outyet
+RUN apt-get update -y && \
+    apt-get install --no-install-recommends -qy curl build-essential ca-certificates git mercurial bzr
 
-# # Run the outyet command by default when the container starts.
-# ENTRYPOINT /go/bin/outyet
+RUN mkdir /goroot /gopath
+RUN curl -Ls https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz | tar xvzf - -C /goroot --strip-components=1
 
-# # Document that the service listens on port 8080.
-# EXPOSE 8080
+ENV GOROOT /goroot
+ENV GOPATH /gopath
+ENV PATH $PATH:$GOROOT/bin:$GOPATH/bin
 
-
-# note that it does no good to enable swagger on the docker container -- it
-# doesn't work because swagger needs to know where you come from, and
-# so the .dockerignore file excludes the swagger directory
-
-FROM aegypius/golang
-
-WORKDIR /gopath/src/app
-ADD . /gopath/src/app/
+WORKDIR /gopath/src/github.com/AchievementNetwork/vasco
+ADD . /gopath/src/github.com/AchievementNetwork/vasco
+# RUN go get go get github.com/kardianos/vendor
+# RUN go install vendor
+# RUN vendor
 RUN go get
+RUN go install github.com/AchievementNetwork/vasco
 
 CMD []
-ENTRYPOINT ["/gopath/bin/app"]
+ENTRYPOINT ["/gopath/bin/vasco"]
 # Document that the service listens on port 8080 and 8081.
 EXPOSE 8080 8081
 
