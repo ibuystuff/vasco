@@ -19,9 +19,9 @@ type Cache interface {
 	Expire(key string, seconds int) (err error)
 	ExpireAt(key string, timestamp int64) (err error)
 
-	SAdd(key string, values []string) (err error)
+	SAdd(key string, values ...string) (err error)
 	SGet(key string) (values []string, err error)
-	SRemove(key string, values []string) (err error)
+	SRemove(key string, values ...string) (err error)
 	SCount(key string) (count int, err error)
 	SRandMember(key string) (value string, err error)
 

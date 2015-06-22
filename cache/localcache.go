@@ -83,7 +83,7 @@ func (c *LocalCache) ExpireAt(key string, timestamp int64) (err error) {
 	return
 }
 
-func (c *LocalCache) SAdd(key string, values []string) (err error) {
+func (c *LocalCache) SAdd(key string, values ...string) (err error) {
 	s, ok := c.sets[key]
 	if !ok {
 		s = stringset.New()
@@ -102,7 +102,7 @@ func (c *LocalCache) SGet(key string) (values []string, err error) {
 	return
 }
 
-func (c *LocalCache) SRemove(key string, values []string) (err error) {
+func (c *LocalCache) SRemove(key string, values ...string) (err error) {
 	if s, ok := c.sets[key]; ok {
 		s.Delete(values...)
 		// if we've removed the last item, delete the key
@@ -142,7 +142,7 @@ func (c *LocalCache) SRandMember(key string) (value string, err error) {
 func (c *LocalCache) ZAdd(key string, score int, value string) (err error) {
 	newvalue := fmt.Sprintf("%d:%s", score, value)
 	c.ZRem(key, value) // in case it already exists
-	return c.SAdd("Z"+key, []string{newvalue})
+	return c.SAdd("Z"+key, newvalue)
 }
 
 func (c *LocalCache) ZRem(key string, value string) (err error) {
@@ -154,7 +154,7 @@ func (c *LocalCache) ZRem(key string, value string) (err error) {
 	for _, item := range all.Strings() {
 		sv := strings.SplitN(item, ":", 2)
 		if sv[1] == value {
-			c.SRemove(zkey, []string{item})
+			c.SRemove(zkey, item)
 		}
 	}
 	return
