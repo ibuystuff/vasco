@@ -20,8 +20,8 @@ import (
 
 	"github.com/AchievementNetwork/vasco/cache"
 	"github.com/AchievementNetwork/vasco/registry"
-	"github.com/emicklei/go-restful"
-	"github.com/emicklei/go-restful/swagger"
+	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful"
+	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful/swagger"
 )
 
 type Vasco struct {
