@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AchievementNetwork/stringset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -134,7 +135,7 @@ func TestSAddSGet(t *testing.T) {
 	assert.Nil(t, err)
 	result, err := c.SGet("skey")
 	assert.Nil(t, err)
-	CheckTagEquivalence(t, values, result)
+	checkEquivalence(t, values, result)
 }
 
 func TestMultipleAdd(t *testing.T) {
@@ -145,7 +146,7 @@ func TestMultipleAdd(t *testing.T) {
 	assert.Nil(t, err)
 	result, err := c.SGet("skey")
 	assert.Nil(t, err)
-	CheckTagEquivalence(t, values, result)
+	checkEquivalence(t, values, result)
 }
 
 func TestSCount(t *testing.T) {
@@ -164,7 +165,7 @@ func TestSRemove(t *testing.T) {
 	assert.Nil(t, err)
 	n, _ := c.SCount("skey")
 	assert.Equal(t, 2, n)
-	CheckTagEquivalence(t, []string{"c", "e"}, result)
+	checkEquivalence(t, []string{"c", "e"}, result)
 	err = c.SRemove("skey", []string{"a", "c", "e"})
 	assert.Nil(t, err)
 	result, err = c.SGet("skey")
@@ -247,4 +248,11 @@ func TestZAddAgain(t *testing.T) {
 	results, err := c.ZRange("key", 0, -1)
 	assert.Nil(t, err)
 	assert.Equal(t, values, results)
+}
+
+// This performs an equivalence test for two string slices
+func checkEquivalence(t *testing.T, a []string, b []string) {
+	ssa := stringset.New().Add(a...)
+	ssb := stringset.New().Add(b...)
+	assert.True(t, ssa.Equals(ssb))
 }
