@@ -28,14 +28,14 @@ type Status struct {
 }
 
 type Registration struct {
-	Name     string         `json:"name"`
-	Address  string         `json:"address"`
-	Pattern  string         `json:"pattern"`
-	Strategy string         `json:"strategy,omitempty" description:"random, roundrobin, or sticky"`
-	Stat     Status         `json:"status,omitempty"`
-	hash     string         `json:"-"`
-	regex    *regexp.Regexp `json:"-"`
-	url      *url.URL       `json:"-"`
+	Name    string         `json:"name"`
+	Address string         `json:"address"`
+	Pattern string         `json:"pattern"`
+	Weight  int            `json:"weight,omitempty"`
+	Stat    Status         `json:"status,omitempty"`
+	hash    string         `json:"-"`
+	regex   *regexp.Regexp `json:"-"`
+	url     *url.URL       `json:"-"`
 }
 
 func NewRegFromJSON(j string) *Registration {
@@ -95,8 +95,8 @@ func (r *Registration) SetDefaults() error {
 	if r.Stat.Path == "" {
 		return errors.New("The status path field cannot be blank.")
 	}
-	if r.Strategy == "" {
-		r.Strategy = "random"
+	if r.Weight == 0 {
+		r.Weight = 100
 	}
 	if r.Stat.Frequency == 0 {
 		r.Stat.Frequency = 5

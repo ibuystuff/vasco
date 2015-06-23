@@ -18,16 +18,17 @@ type server struct {
 	name    string
 	addr    string
 	pattern string
+	weight  int
 }
 
 var servers = []server{
-	server{"user", "http://1.1.1.1:8080", "/user"},
-	server{"tags", "http://1.1.1.1:8081", "/tags"},
-	server{"user", "http://1.1.1.2:8080", "/user"},
-	server{"tags", "http://1.1.1.2:8081", "/tags"},
-	server{"newtags", "http://1.1.1.2:8091", "/tags/extra"},
-	server{"default", "http://1.1.1.3:8080", "/"},
-	server{"rewrite", "http://1.1.1.4:8081", "/rewrite(/.*)"},
+	server{"user", "http://1.1.1.1:8080", "/user", 0},
+	server{"tags", "http://1.1.1.1:8081", "/tags", 90},
+	server{"user", "http://1.1.1.2:8080", "/user", 0},
+	server{"tags", "http://1.1.1.2:8081", "/tags", 10},
+	server{"newtags", "http://1.1.1.2:8091", "/tags/extra", 0},
+	server{"default", "http://1.1.1.3:8080", "/", 0},
+	server{"rewrite", "http://1.1.1.4:8081", "/rewrite(/.*)", 0},
 }
 
 func TestMain(m *testing.M) {
@@ -46,8 +47,9 @@ func makeJson(svr server) string {
         "name": "%s",
         "address": "%s",
         "pattern": "%s",
-        "status": {"path": "/status"}
-        }`, svr.name, svr.addr, svr.pattern)
+        "status": {"path": "/status"},
+        "weight": %d
+        }`, svr.name, svr.addr, svr.pattern, svr.weight)
 	fmt.Println(j)
 	return j
 }
@@ -61,7 +63,7 @@ func TestRegistryBasics(t *testing.T) {
 	assert.Equal(t, reg.Name, reg2.Name)
 	assert.Equal(t, reg.Address, reg2.Address)
 	assert.Equal(t, reg.Pattern, reg2.Pattern)
-	assert.Equal(t, reg.Strategy, reg2.Strategy)
+	assert.Equal(t, reg.Weight, reg2.Weight)
 	assert.Equal(t, reg.Stat, reg2.Stat)
 }
 
@@ -116,12 +118,12 @@ func TestMatchComplex1(t *testing.T) {
 }
 
 func TestMatchComplex2(t *testing.T) {
-	req := "http://testserver.com/tags"
+	req := "http://testserver.com/user"
 	items := make(map[string]bool)
 	for i := 0; i < 10; i++ {
 		regist, err := r.FindBestMatch(req)
 		assert.Nil(t, err)
-		assert.Equal(t, "tags", regist.Name)
+		assert.Equal(t, "user", regist.Name)
 		items[regist.Address] = true
 	}
 	assert.Equal(t, 2, len(items))
@@ -172,4 +174,19 @@ func TestRouting2(t *testing.T) {
 	assert.Nil(t, err)
 	matched, _ := regexp.MatchString(`http://1\.1\.1\..:8081/login`, req.String())
 	assert.True(t, matched)
+}
+
+func TestRoutingRandom(t *testing.T) {
+	output := make(map[string]int)
+	for i := 0; i < 100; i++ {
+		req, _ := url.Parse("http://testserver.com/tags/whatever")
+		err := r.RewriteUrl(req)
+		assert.Nil(t, err)
+		output[req.String()] += 1
+	}
+	// This will fail randomly sometimes if you get unlucky, but it shouldn't happen
+	// so often that it blocks things.
+	assert.InDelta(t, 90, output["http://1.1.1.1:8081/tags/whatever"], 7)
+	assert.InDelta(t, 9, output["http://1.1.1.2:8081/tags/whatever"], 7)
+	fmt.Println(output)
 }

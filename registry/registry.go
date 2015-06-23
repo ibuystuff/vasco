@@ -73,6 +73,30 @@ func (r *Registry) Refresh(reg *Registration) {
 	log.Printf("Refreshing %s %s\n", reg.Name, reg.Address)
 }
 
+// given a set of possible registration options, this chooses one
+// of them using a weighted random strategy
+func (r *Registry) choose(choices []*Registration) (best *Registration) {
+	total := 0
+	for _, choice := range choices {
+		total += choice.Weight
+	}
+
+	target := rand.Intn(total)
+
+	for ix, choice := range choices {
+		if target < choice.Weight {
+			best = choices[ix]
+			return
+		} else {
+			target -= choice.Weight
+		}
+	}
+
+	fmt.Printf("WARNING: impossible exit from Registry.choose -- %d %v.\n", target, choices)
+	best = choices[len(choices)-1]
+	return
+}
+
 func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 	hashes, _ := r.c.SGet("Registry:ITEMS")
 	matches := make([]*Registration, 0)
@@ -126,8 +150,7 @@ func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 			}
 		}
 
-		// this is the random strategy
-		best = choices[rand.Intn(len(choices))]
+		best = r.choose(choices)
 	}
 
 	if best != nil {
