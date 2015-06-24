@@ -88,19 +88,12 @@ pattern:
 
     If a forwarded request times out, the server is immediately marked with a status of "down".
 
-strategy:
+weight:
 
-    strategy: "roundrobin" or "random" or "stickyrandom" or "stickyroundrobin"
-    This controls how requests are routed.
-        Roundrobin cycles between servers for a given request in a fixed order
-        Random chooses a server randomly to respond to a given request
-        Sticky uses the given strategy for a new request from a given IP but then directs further requests from that same IP to the given server.
-    [x] Default is random.
-    [ ] Sticky and roundrobin are not yet implemented (and probably won't be for a while)
+    When multiple possible paths are matched (usually because there are multiple machines handling a given path), Vasco chooses between them using a weighted random selection.
 
-ttl:
+    Default 100 if not specified. Distributes load randomly to services based on the fraction of the total of all services that matched the query. So if two services match with values of 100 and 50, the first will get 2/3 of the traffic. This is evaluated on every query so it's possible to start a service with a low number for testing and then raise it.
 
-    [ ] Only used for a sticky strategy -- controls how long an IP lives in the cache. Specify a time in integer numbers of seconds. Default is 15 minutes (900 seconds)
 
 status:
 
@@ -162,6 +155,5 @@ Things Vasco still needs:
 
 ## Longer term
 
-* Add support for load balancing strategies
 * Support storing all the information in a Redis store so that multiple load balancers can run and will cooperate on things like "sticky" and "roundrobin" strategy -- AWS ElastiCache supports Redis. The design of the memory cache borrows directly from Redis, and the cache is a pluggable item, so it should be simple to create a Redis version of the cache.
 
