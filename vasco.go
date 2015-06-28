@@ -19,14 +19,19 @@ import (
 	"strings"
 
 	"github.com/AchievementNetwork/vasco/cache"
-	"github.com/AchievementNetwork/vasco/registry"
 	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful"
 	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful/swagger"
+	"github.com/AchievementNetwork/vasco/registry"
 )
 
 type Vasco struct {
 	cache    cache.Cache
 	registry registry.Registry
+}
+
+func NewVasco(c cache.Cache) *Vasco {
+	r := registry.NewRegistry(c)
+	return &Vasco{cache: c, registry: *r}
 }
 
 func makeConfigService(path string, v *Vasco) *restful.WebService {
@@ -80,7 +85,7 @@ func makeRegisterService(path string, v *Vasco) *restful.WebService {
 	svc.Route(svc.POST("").To(v.register).
 		Doc("create a registration object").
 		Operation("register").
-		Reads(registry.Registration{}))
+		Reads(registry.Registration{Name: "Name", Address: "address", Weight: 100}))
 
 	svc.Route(svc.PUT("/{name}/{addr}").To(v.refresh).
 		Doc("refresh an existing registration object").
@@ -102,6 +107,10 @@ func makeRegisterService(path string, v *Vasco) *restful.WebService {
 		Param(svc.QueryParameter("url", "the url to test").DataType("string").Required(true)).
 		Returns(http.StatusNotFound, "No matching url found", nil).
 		Writes(registry.Registration{}))
+
+	svc.Route(svc.GET("/whoami").To(v.whoami).
+		Doc("Responds with the caller's address").
+		Operation("whoami"))
 
 	return svc
 
@@ -213,6 +222,10 @@ func (v *Vasco) testRegistration(request *restful.Request, response *restful.Res
 	}
 }
 
+func (v *Vasco) whoami(request *restful.Request, response *restful.Response) {
+	response.WriteEntity(request.Request.RemoteAddr)
+}
+
 func (v *Vasco) unregister(request *restful.Request, response *restful.Response) {
 	name := request.PathParameter("name")
 	addr := request.PathParameter("addr")
@@ -236,24 +249,34 @@ func LandS(srv *http.Server, errs chan error) {
 	errs <- err
 }
 
+func getEnvWithDefault(name, def string) string {
+	if s := os.Getenv(name); s != "" {
+		return s
+	}
+	return def
+}
+
 func main() {
 	// to see what happens in the package, uncomment the following
-	restful.TraceLogger(log.New(os.Stdout, "[restful] ", log.LstdFlags|log.Lshortfile))
+	// restful.TraceLogger(log.New(os.Stdout, "[restful] ", log.LstdFlags|log.Lshortfile))
 
 	var kindOfCache string
 	var useSwagger bool
+	var localPort string = getEnvWithDefault("VASCO_LOCAL", "8080")
+	var queryPort string = getEnvWithDefault("VASCO_QUERY", "8081")
+
+	flag.StringVar(&localPort, "localport", localPort, "The local (management) port.")
+	flag.StringVar(&queryPort, "queryport", queryPort, "The query (external) port.")
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
 	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
 
-	var v Vasco
+	var v *Vasco
 	switch kindOfCache {
 	case "redis":
 		log.Fatal("The redis store is not yet implemented.")
 	case "memory":
-		c := cache.NewLocalCache()
-		r := *registry.NewRegistry(c)
-		v = Vasco{cache: c, registry: r}
+		v = NewVasco(cache.NewLocalCache())
 	default:
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
@@ -295,7 +318,7 @@ func main() {
 	serverErrors := make(chan error)
 
 	log.Printf("forwarder listening on localhost:8081")
-	forwarder := &http.Server{Addr: ":8081", Handler: NewMatchingReverseProxy(&v)}
+	forwarder := &http.Server{Addr: ":8081", Handler: NewMatchingReverseProxy(v)}
 	go LandS(forwarder, serverErrors)
 
 	log.Printf("registry listening on localhost:8080")

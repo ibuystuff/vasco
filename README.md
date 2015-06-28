@@ -4,7 +4,9 @@ This is ANet's discovery server, named after Vasco de Gama, who was a Portugese 
 
 The purpose of the server is to provide discovery services to a collection of other servers, allowing them to find one another without needing to know very much. It acts as a load balancer as well.
 
-The basic idea is that servers register themselves (or are registered in a configuration). Vasco then acts as a reverse proxy and load balancer -- queries to the public port are directed to the appropriate server behind the firewall by looking at the request and distributing. Vasco supports multiple instances of a given pattern and can follow different strategies for load balancing.
+This system was designed by following the premise that the goal of server operations is to reduce the number of places with a list of machines to as close to zero as possible. It supports the idea of either setting up configuration at the same time as the services, or of allowing services to register themselves.
+
+Once services are registered, Vasco then acts as a reverse proxy and load balancer -- queries to the "public" port are directed to the appropriate server behind the firewall by looking at the request and distributing it appropriately. Vasco supports multiple instances of a given pattern and can load balance using a weighted random probability.
 
 ## Build instructions
 
