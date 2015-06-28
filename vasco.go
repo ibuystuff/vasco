@@ -297,9 +297,9 @@ func main() {
 		// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
 		config := swagger.Config{
 			WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
-			WebServicesUrl: "http://localhost:8080",
+			WebServicesUrl: "http://localhost:" + localPort,
 			ApiPath:        "/apidocs.json",
-			ApiVersion:     "0.1.0",
+			ApiVersion:     "0.1.0", // this should get the current git revision
 			// Someday we want to have a little more documentation, and we might want to add some additional
 			// fields to the swagger.Config object to allow us to specify some of the high-level description
 			// stuff (see getListing function).
@@ -317,12 +317,12 @@ func main() {
 
 	serverErrors := make(chan error)
 
-	log.Printf("forwarder listening on localhost:8081")
-	forwarder := &http.Server{Addr: ":8081", Handler: NewMatchingReverseProxy(v)}
+	log.Printf("forwarder listening on localhost:" + queryPort)
+	forwarder := &http.Server{Addr: ":" + queryPort, Handler: NewMatchingReverseProxy(v)}
 	go LandS(forwarder, serverErrors)
 
-	log.Printf("registry listening on localhost:8080")
-	server := &http.Server{Addr: ":8080", Handler: wsContainer}
+	log.Printf("registry listening on localhost:" + localPort)
+	server := &http.Server{Addr: ":" + localPort, Handler: wsContainer}
 	go LandS(server, serverErrors)
 
 	err := <-serverErrors
