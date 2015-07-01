@@ -3,4 +3,5 @@
 # vasco expects environment with VASCO_LOCAL for the command port,
 # and VASCO_QUERY for the query port
 
-./vasco --swagger=$USE_SWAGGER >>$LOGFILE 2>&1
+nohup ./vasco --swagger=$USE_SWAGGER >>$LOGFILE 2>&1
+echo $!>$PIDFILE
