@@ -45,11 +45,11 @@ Once services are registered, Vasco then acts as a reverse proxy and load balanc
             /register goes to discovery server locally
                 [x] POST /register
                     accepts {Registration}
-                    returns 200 if registration worked
-                [x] PUT /register/myName/myAddr
-                    refreshes an existing registration (it also works to re-register it). This will put it back in service immediately.
-                [x] DELETE /register/myName/myAddr
-                    Removes the IP and all its children
+                    returns 200 if registration worked and a hash for the registration entry
+                [x] PUT /register/hash
+                    refreshes an existing registration. This will put it back in service immediately. If the hash has expired, this will return a 404; you will need to re-register.
+                [x] DELETE /register/hash
+                    Removes the registration entry
                 [x] GET /register/test/url
                     Returns the result of the load balancer (the registration object that the LB would resolve to this time -- repeating this request may return a different result.)
 
@@ -101,10 +101,7 @@ status:
 
     [ ] A JSON object specifying the status behavior:
     path:
-        specify the path to be used to check status of the server (this path is concatenated with the address field to build a status query). A 200 reply means the server is up and functioning. A JSON payload may be delivered with more detailed status information; it is not inspected, merely returned as part of the discover server's status block. Default is myAddr/status.
-
-    frequency:
-        An integer number of seconds. how often the status should be checked. Default = 5 seconds.
+        specify the path to be used to check status of the server (this path is concatenated with the address field to build a status query). Status is checked every N seconds, where N is defined in the Vasco configuration. A 200 reply means the server is up and functioning. A payload may be delivered with more detailed status information. It is returned as part of the discover server's status block (if it successfully parses as a JSON object, it is delivered that way, otherwise as a string). Default is myAddr/status.
 
     downcount:
         An integer. The server is marked as out of service if it fails to reply to a status request (times out) this many times in a row. Default = 2. Note that if a server replies with a non-200 value it is marked down immediately. This can be used to throttle requests to a server under heavy load.

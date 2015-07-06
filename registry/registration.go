@@ -22,7 +22,6 @@ import (
 
 type Status struct {
 	Path      string `json:"path"`
-	Frequency int    `json:"frequency,omitempty"`
 	Downcount int    `json:"downcount,omitempty"`
 	Upcount   int    `json:"upcount,omitempty"`
 }
@@ -97,9 +96,6 @@ func (r *Registration) SetDefaults() error {
 	}
 	if r.Weight == 0 {
 		r.Weight = 100
-	}
-	if r.Stat.Frequency == 0 {
-		r.Stat.Frequency = 5
 	}
 	if r.Stat.Downcount == 0 {
 		r.Stat.Downcount = 2

@@ -78,38 +78,38 @@ func makeRegisterService(path string, v *Vasco) *restful.WebService {
 	svc := new(restful.WebService)
 	svc.
 		Path(path).
-		Doc("Manage the registration service").
-		Consumes(restful.MIME_JSON).
-		Produces(restful.MIME_JSON)
+		Doc("Manage the registration service")
 
 	svc.Route(svc.POST("").To(v.register).
-		Doc("create a registration object").
+		Doc("create a registration object and return its hash").
 		Operation("register").
-		Reads(registry.Registration{Name: "Name", Address: "address", Weight: 100}))
-
-	svc.Route(svc.PUT("/{name}/{addr}").To(v.refresh).
-		Doc("refresh an existing registration object").
-		Operation("register").
-		Param(svc.PathParameter("name", "the Name field from the registration object").DataType("string")).
-		Param(svc.PathParameter("addr", "the host name (and port) for this entry").DataType("string").Required(true)).
+		Consumes(restful.MIME_JSON).
+		Produces(restful.MIME_JSON).
 		Reads(registry.Registration{}))
 
-	svc.Route(svc.DELETE("/{name}/{addr}").To(v.unregister).
+	svc.Route(svc.PUT("/{hash}").To(v.refresh).
+		Doc("refresh an existing registration object (I'm still here)").
+		Operation("refresh").
+		Param(svc.PathParameter("hash", "the hash returned by the registration").DataType("string")).
+		Reads(registry.Registration{}))
+
+	svc.Route(svc.DELETE("/{hash}").To(v.unregister).
 		Doc("delete a registration.").
 		Operation("unregister").
-		Param(svc.PathParameter("name", "the Name field from the registration object").DataType("string")).
-		Param(svc.PathParameter("addr", "the host name (and port) for this entry").DataType("string").Required(true)).
+		Param(svc.PathParameter("hash", "the hash returned by the registration").DataType("string")).
 		Returns(http.StatusNotFound, "Key not found", nil))
 
 	svc.Route(svc.GET("/test").To(v.testRegistration).
 		Doc("Returns the result of the load balancer (where the LB would resolve to this time -- repeating this request may return a different result.)").
 		Operation("testRegistration").
 		Param(svc.QueryParameter("url", "the url to test").DataType("string").Required(true)).
+		Produces(restful.MIME_JSON).
 		Returns(http.StatusNotFound, "No matching url found", nil).
 		Writes(registry.Registration{}))
 
 	svc.Route(svc.GET("/whoami").To(v.whoami).
 		Doc("Responds with the caller's address").
+		Produces(restful.MIME_JSON).
 		Operation("whoami"))
 
 	return svc
@@ -194,18 +194,23 @@ func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	if err := reg.SetDefaults(); err != nil {
 		writeError(response, http.StatusForbidden, err)
 	}
-	v.registry.Register(reg)
+	hash := v.registry.Register(reg)
 
-	log.Printf("Registered %s %s\n", reg.Name, reg.Address)
+	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
+	response.WriteEntity(hash)
 	response.WriteHeader(http.StatusOK)
-
 }
 
 func (v *Vasco) refresh(request *restful.Request, response *restful.Response) {
-	name := request.PathParameter("name")
-	addr := request.PathParameter("addr")
-	v.registry.Refresh(v.registry.Find(name, addr))
-	log.Printf("Refreshing %s %s\n", name, addr)
+	hash := request.PathParameter("hash")
+	reg := v.registry.Find(hash)
+	if reg == nil {
+		log.Printf("FAILED: Refresh call for %s\n", hash)
+		writeError(response, 404, errors.New("No registration found for that hash."))
+		return
+	}
+	v.registry.Refresh(reg)
+	log.Printf("Refreshing %s %s\n", reg.Name, reg.Address)
 }
 
 func (v *Vasco) testRegistration(request *restful.Request, response *restful.Response) {
@@ -227,10 +232,9 @@ func (v *Vasco) whoami(request *restful.Request, response *restful.Response) {
 }
 
 func (v *Vasco) unregister(request *restful.Request, response *restful.Response) {
-	name := request.PathParameter("name")
-	addr := request.PathParameter("addr")
-	v.registry.Unregister(v.registry.Find(name, addr))
-	log.Printf("Unregistered %s %s\n", name, addr)
+	hash := request.PathParameter("hash")
+	v.registry.Unregister(v.registry.Find(hash))
+	log.Printf("Unregistered %s\n", hash)
 }
 
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites

@@ -19,30 +19,38 @@ import (
 	"github.com/AchievementNetwork/vasco/cache"
 )
 
+// Registry maintains a private cache of the registry data
 type Registry struct {
 	c cache.Cache
 }
 
+// NewRegistry constructs a registry around a cache, which it accepts as an argument
+// (makes it easier to test)
 func NewRegistry(theCache cache.Cache) *Registry {
 	return &Registry{c: theCache}
 }
 
-func (r *Registry) Register(reg *Registration) {
+// Register takes a registration object and stores it so that it can be efficiently
+// queried. It stores it keyed by its hash value, and if a timeout is requested sets an
+// expiration time.
+// It also stores its key in a set of items that have been stored, so that it's fast and
+// easy to walk a list of all items in the registry.
+func (r *Registry) Register(reg *Registration) string {
 	stimeout, _ := r.c.Get("Env:DISCOVERY_EXPIRATION")
 	timeout, _ := strconv.Atoi(stimeout)
+	hash := reg.Hash()
 
-	r.c.Set(reg.Hash(), reg.String())
+	r.c.Set(hash, reg.String())
 	if timeout != 0 {
-		r.c.Expire(reg.Hash(), timeout)
+		r.c.Expire(hash, timeout)
 	}
-	r.c.SAdd("Registry:ITEMS", reg.Hash())
-	log.Printf("register %s: %v\n", reg.Hash(), reg.String())
+	r.c.SAdd("Registry:ITEMS", hash)
+	log.Printf("register %s: %v\n", hash, reg.String())
+	return hash
 }
 
-func (r *Registry) Find(name, addr string) *Registration {
-	hash := Hash(name, addr)
+func (r *Registry) Find(hash string) *Registration {
 	regtext, err := r.c.Get(hash)
-	fmt.Println(regtext)
 	if err != nil {
 		return nil
 	}
@@ -60,6 +68,9 @@ func (r *Registry) Unregister(reg *Registration) {
 	r.c.Delete(h)
 }
 
+func (r *Registry) UpdateStatus() {
+}
+
 func (r *Registry) Refresh(reg *Registration) {
 	if reg == nil {
 		return
@@ -70,7 +81,6 @@ func (r *Registry) Refresh(reg *Registration) {
 
 	hash := reg.Hash()
 	r.c.Expire(hash, timeout)
-	log.Printf("Refreshing %s %s\n", reg.Name, reg.Address)
 }
 
 // given a set of possible registration options, this chooses one
