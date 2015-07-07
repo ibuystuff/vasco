@@ -267,10 +267,10 @@ func main() {
 	var kindOfCache string
 	var useSwagger bool
 	var localPort string = getEnvWithDefault("VASCO_LOCAL", "8080")
-	var queryPort string = getEnvWithDefault("VASCO_QUERY", "8081")
+	var proxyPort string = getEnvWithDefault("VASCO_PROXY", "8081")
 
 	flag.StringVar(&localPort, "localport", localPort, "The local (management) port.")
-	flag.StringVar(&queryPort, "queryport", queryPort, "The query (external) port.")
+	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
 	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
@@ -321,11 +321,11 @@ func main() {
 
 	serverErrors := make(chan error)
 
-	log.Printf("forwarder listening on localhost:" + queryPort)
-	forwarder := &http.Server{Addr: ":" + queryPort, Handler: NewMatchingReverseProxy(v)}
+	log.Printf("reverse proxy listening on port %s", proxyPort)
+	forwarder := &http.Server{Addr: ":" + proxyPort, Handler: NewMatchingReverseProxy(v)}
 	go LandS(forwarder, serverErrors)
 
-	log.Printf("registry listening on localhost:" + localPort)
+	log.Printf("registry listening on port %s", localPort)
 	server := &http.Server{Addr: ":" + localPort, Handler: wsContainer}
 	go LandS(server, serverErrors)
 
