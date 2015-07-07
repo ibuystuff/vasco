@@ -42,7 +42,9 @@ func (r *Registry) Register(reg *Registration) string {
 
 	r.c.Set(hash, reg.String())
 	if timeout != 0 {
-		r.c.Expire(hash, timeout)
+		// we give clients 2 extra seconds to refresh before timeout
+		// in case they're using our timeout to trigger refresh
+		r.c.Expire(hash, timeout+2)
 	}
 	r.c.SAdd("Registry:ITEMS", hash)
 	log.Printf("register %s: %v\n", hash, reg.String())
