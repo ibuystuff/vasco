@@ -21,6 +21,8 @@ type server struct {
 	weight  int
 }
 
+var hashes = []string{"", "", "", "", "", "", "", ""}
+
 var servers = []server{
 	server{"user", "http://1.1.1.1:8080", "/user", 0},
 	server{"tags", "http://1.1.1.1:8081", "/tags", 90},
@@ -57,8 +59,8 @@ func makeJson(svr server) string {
 func TestRegistryBasics(t *testing.T) {
 	reg := NewRegFromJSON(makeJson(servers[0]))
 	assert.NotNil(t, reg)
-	r.Register(reg)
-	reg2 := r.Find(servers[0].name, servers[0].addr)
+	hashes[0] = r.Register(reg)
+	reg2 := r.Find(hashes[0])
 	assert.NotNil(t, reg2)
 	assert.Equal(t, reg.Name, reg2.Name)
 	assert.Equal(t, reg.Address, reg2.Address)
@@ -70,8 +72,8 @@ func TestRegistryBasics(t *testing.T) {
 func TestRegistryMultiple(t *testing.T) {
 	reg := NewRegFromJSON(makeJson(servers[1]))
 	assert.NotNil(t, reg)
-	r.Register(reg)
-	reg2 := r.Find(servers[0].name, servers[0].addr)
+	hashes[1] = r.Register(reg)
+	reg2 := r.Find(hashes[1])
 	assert.NotNil(t, reg2)
 }
 
@@ -96,10 +98,10 @@ func TestMatchFail(t *testing.T) {
 }
 
 func TestUnregister(t *testing.T) {
-	reg := r.Find(servers[0].name, servers[0].addr)
+	reg := r.Find(hashes[0])
 	assert.NotNil(t, reg)
 	r.Unregister(reg)
-	reg = r.Find(servers[0].name, servers[0].addr)
+	reg = r.Find(hashes[0])
 	assert.Nil(t, reg)
 }
 
