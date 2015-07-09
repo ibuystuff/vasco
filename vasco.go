@@ -116,18 +116,35 @@ func makeRegisterService(path string, v *Vasco) *restful.WebService {
 
 }
 
-func makeStatusService(v *Vasco) *restful.WebService {
+func makeStatusService(path string, v *Vasco) *restful.WebService {
 	svc := new(restful.WebService)
 	svc.
-		Doc("Reports aggregated status statistics (but not yet)")
+		Path(path).
+		Doc("Reports aggregated status statistics.")
+
+	svc.Route(svc.GET("").To(v.statusGeneral).
+		Doc("Generates aggregated status information.").
+		Produces(restful.MIME_JSON).
+		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Operation("statusGeneral"))
+
+	svc.Route(svc.GET("/detail").To(v.statusDetail).
+		Doc("Generates detailed status information.").
+		Produces(restful.MIME_JSON).
+		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Operation("statusDetail"))
 
 	return svc
-
 }
 
 func (v *Vasco) RegisterContainer(container *restful.Container) {
 	container.Add(makeConfigService("/config", v))
 	container.Add(makeRegisterService("/register", v))
+	container.Add(makeStatusService("/status", v))
+}
+
+func (v *Vasco) RegisterStatusContainer(container *restful.Container) {
+	container.Add(makeStatusService("/status", v))
 }
 
 func (v *Vasco) PreloadFromEnvironment(envname string) {
@@ -237,6 +254,15 @@ func (v *Vasco) unregister(request *restful.Request, response *restful.Response)
 	log.Printf("Unregistered %s\n", hash)
 }
 
+func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Response) {
+	response.WriteEntity("OK")
+}
+
+func (v *Vasco) statusDetail(request *restful.Request, response *restful.Response) {
+	st := v.registry.DetailedStatus()
+	response.WriteEntity(st)
+}
+
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
 // URLs to the scheme and host provided by the registration system. It may
 // rewrite the path as well if that was specified.
@@ -266,11 +292,13 @@ func main() {
 
 	var kindOfCache string
 	var useSwagger bool
-	var localPort string = getEnvWithDefault("VASCO_LOCAL", "8080")
-	var proxyPort string = getEnvWithDefault("VASCO_PROXY", "8081")
+	var proxyPort string = getEnvWithDefault("VASCO_PROXY", "8080")
+	var registryPort string = getEnvWithDefault("VASCO_REGISTRY", "8081")
+	var statusPort string = getEnvWithDefault("VASCO_STATUS", "8082")
 
-	flag.StringVar(&localPort, "localport", localPort, "The local (management) port.")
+	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
+	flag.StringVar(&statusPort, "statusport", statusPort, "The status port.")
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
 	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
@@ -290,10 +318,14 @@ func main() {
 	})
 	v.PreloadFromEnvironment("DISCOVERY_CONFIG")
 
-	wsContainer := restful.NewContainer()
 	restful.EnableTracing(true)
+	wsContainer := restful.NewContainer()
 	wsContainer.Router(restful.CurlyRouter{})
 	v.RegisterContainer(wsContainer)
+
+	statusContainer := restful.NewContainer()
+	statusContainer.Router(restful.CurlyRouter{})
+	v.RegisterStatusContainer(statusContainer)
 
 	if useSwagger {
 		// Optionally, you can install the Swagger Service which provides a nice Web UI on your REST API
@@ -301,7 +333,7 @@ func main() {
 		// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
 		config := swagger.Config{
 			WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
-			WebServicesUrl: "http://localhost:" + localPort,
+			WebServicesUrl: "http://localhost:" + registryPort,
 			ApiPath:        "/apidocs.json",
 			ApiVersion:     "0.1.0", // this should get the current git revision
 			// Someday we want to have a little more documentation, and we might want to add some additional
@@ -325,8 +357,12 @@ func main() {
 	forwarder := &http.Server{Addr: ":" + proxyPort, Handler: NewMatchingReverseProxy(v)}
 	go LandS(forwarder, serverErrors)
 
-	log.Printf("registry listening on port %s", localPort)
-	server := &http.Server{Addr: ":" + localPort, Handler: wsContainer}
+	log.Printf("status system listening on port %s", statusPort)
+	statuser := &http.Server{Addr: ":" + statusPort, Handler: statusContainer}
+	go LandS(statuser, serverErrors)
+
+	log.Printf("registry listening on port %s", registryPort)
+	server := &http.Server{Addr: ":" + registryPort, Handler: wsContainer}
 	go LandS(server, serverErrors)
 
 	err := <-serverErrors

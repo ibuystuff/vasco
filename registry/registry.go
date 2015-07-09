@@ -9,10 +9,13 @@
 package registry
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"strconv"
 
@@ -23,6 +26,10 @@ import (
 type Registry struct {
 	c cache.Cache
 }
+
+type StatusItem map[string]interface{}
+
+type StatusBlock map[string]StatusItem
 
 // NewRegistry constructs a registry around a cache, which it accepts as an argument
 // (makes it easier to test)
@@ -70,7 +77,30 @@ func (r *Registry) Unregister(reg *Registration) {
 	r.c.Delete(h)
 }
 
-func (r *Registry) UpdateStatus() {
+func (r *Registry) DetailedStatus() StatusBlock {
+	statuses := StatusBlock{}
+	regs := r.getAllRegistrations()
+	for _, reg := range regs {
+		u, _ := url.Parse(reg.Address)
+		u.Path = reg.Stat.Path
+		result, err := http.Get(u.String())
+		item := StatusItem{}
+		if err != nil {
+			item["Error"] = fmt.Sprintf("GET from %s failed.", u.String())
+			item["StatusCode"] = http.StatusServiceUnavailable
+		} else {
+			body, err := ioutil.ReadAll(result.Body)
+			log.Println(body, err)
+			err = json.Unmarshal(body, &item)
+			if err != nil {
+				item["StatusBody"] = string(body)
+			}
+			item["StatusCode"] = result.StatusCode
+		}
+		statusKey := reg.Name + "(" + reg.Address + ")"
+		statuses[statusKey] = item
+	}
+	return statuses
 }
 
 func (r *Registry) Refresh(reg *Registration) {
@@ -109,24 +139,40 @@ func (r *Registry) choose(choices []*Registration) (best *Registration) {
 	return
 }
 
-func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
+// getAllRegistrations is a helper function that retrieves all known registrations
+// but also removes any that have expired
+func (r *Registry) getAllRegistrations() []*Registration {
 	hashes, _ := r.c.SGet("Registry:ITEMS")
-	matches := make([]*Registration, 0)
-	u, _ := url.Parse(surl)
+	results := make([]*Registration, 0)
+	removes := make([]string, 0)
 	for _, hash := range hashes {
 		regtext, err := r.c.Get(hash)
 		if err != nil {
-			// the hash has expired so delete the corresponding hash item
-			r.c.Delete(hash)
-			r.c.SRemove("Registry:ITEMS", hash)
-			log.Printf("Expired %s\n", hash)
-			// and call ourselves recursively
-			return r.FindBestMatch(surl)
+			// the hash has expired so plan to delete the corresponding hash item
+			removes = append(removes, hash)
 		} else {
 			reg := NewRegFromJSON(regtext)
-			if reg.regex.MatchString(u.Path) {
-				matches = append(matches, reg)
-			}
+			results = append(results, reg)
+		}
+	}
+
+	// now delete all the items that expired
+	for _, hash := range removes {
+		r.c.Delete(hash)
+		r.c.SRemove("Registry:ITEMS", hash)
+		log.Printf("Expired %s\n", hash)
+	}
+
+	return results
+}
+
+func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
+	regs := r.getAllRegistrations()
+	matches := make([]*Registration, 0)
+	u, _ := url.Parse(surl)
+	for _, reg := range regs {
+		if reg.regex.MatchString(u.Path) {
+			matches = append(matches, reg)
 		}
 	}
 
