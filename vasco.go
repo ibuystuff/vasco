@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,9 +27,10 @@ import (
 )
 
 type Vasco struct {
-	cache      cache.Cache
-	registry   registry.Registry
-	lastStatus registry.StatusBlock
+	cache       cache.Cache
+	registry    registry.Registry
+	lastStatus  registry.StatusBlock
+	statusTimer *time.Timer
 }
 
 func NewVasco(c cache.Cache) *Vasco {
@@ -214,6 +216,7 @@ func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 		writeError(response, http.StatusForbidden, err)
 	}
 	hash := v.registry.Register(reg)
+	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
 
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
 	response.WriteEntity(hash)
@@ -274,8 +277,10 @@ func (v *Vasco) statusDetail(request *restful.Request, response *restful.Respons
 }
 
 func (v *Vasco) statusUpdate() {
+	statSTime, _ := v.cache.Get("Env:STATUS_TIME")
+	statTime, _ := strconv.Atoi(statSTime)
 	v.lastStatus = v.registry.DetailedStatus()
-	time.AfterFunc(15*time.Second, v.statusUpdate)
+	v.statusTimer = time.AfterFunc(time.Duration(statTime)*time.Second, v.statusUpdate)
 }
 
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
@@ -367,8 +372,8 @@ func main() {
 		swagger.RegisterSwaggerService(config, wsContainer)
 	}
 
-	// wait a bit and then start watching status
-	time.AfterFunc(15*time.Second, v.statusUpdate)
+	// wait a few seconds and then start watching status
+	v.statusTimer = time.AfterFunc(15*time.Second, v.statusUpdate)
 
 	serverErrors := make(chan error)
 
