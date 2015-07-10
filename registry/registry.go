@@ -90,7 +90,6 @@ func (r *Registry) DetailedStatus() StatusBlock {
 			item["StatusCode"] = http.StatusServiceUnavailable
 		} else {
 			body, err := ioutil.ReadAll(result.Body)
-			log.Println(body, err)
 			err = json.Unmarshal(body, &item)
 			if err != nil {
 				item["StatusBody"] = string(body)
@@ -112,7 +111,7 @@ func (r *Registry) Refresh(reg *Registration) {
 	timeout, _ := strconv.Atoi(stimeout)
 
 	hash := reg.Hash()
-	r.c.Expire(hash, timeout)
+	r.c.Expire(hash, timeout+2)
 }
 
 // given a set of possible registration options, this chooses one

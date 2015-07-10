@@ -17,6 +17,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/AchievementNetwork/vasco/cache"
 	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful"
@@ -25,8 +26,9 @@ import (
 )
 
 type Vasco struct {
-	cache    cache.Cache
-	registry registry.Registry
+	cache      cache.Cache
+	registry   registry.Registry
+	lastStatus registry.StatusBlock
 }
 
 func NewVasco(c cache.Cache) *Vasco {
@@ -255,12 +257,25 @@ func (v *Vasco) unregister(request *restful.Request, response *restful.Response)
 }
 
 func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Response) {
-	response.WriteEntity("OK")
+	ok := true
+	for _, v := range v.lastStatus {
+		stat := v["StatusCode"]
+		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
+			ok = false
+		}
+	}
+	if !ok {
+		writeError(response, 500, errors.New("At least one server is reporting a failure."))
+	}
 }
 
 func (v *Vasco) statusDetail(request *restful.Request, response *restful.Response) {
-	st := v.registry.DetailedStatus()
-	response.WriteEntity(st)
+	response.WriteEntity(v.lastStatus)
+}
+
+func (v *Vasco) statusUpdate() {
+	v.lastStatus = v.registry.DetailedStatus()
+	time.AfterFunc(15*time.Second, v.statusUpdate)
 }
 
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
@@ -315,6 +330,7 @@ func main() {
 
 	v.PreloadFromMap(map[string]string{
 		"Env:DISCOVERY_EXPIRATION": "3600", // the time it takes to expire a server if it disappears
+		"Env:STATUS_TIME":          "60",   // the time between status checks
 	})
 	v.PreloadFromEnvironment("DISCOVERY_CONFIG")
 
@@ -350,6 +366,9 @@ func main() {
 		}
 		swagger.RegisterSwaggerService(config, wsContainer)
 	}
+
+	// wait a bit and then start watching status
+	time.AfterFunc(15*time.Second, v.statusUpdate)
 
 	serverErrors := make(chan error)
 
