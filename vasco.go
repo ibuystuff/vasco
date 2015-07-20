@@ -27,6 +27,10 @@ import (
 	"github.com/AchievementNetwork/vasco/registry"
 )
 
+// These will be set by the linker when built using the standard tools
+var SourceRevision string = "Not set"
+var SourceDeployTag string = "Not set"
+
 type Vasco struct {
 	cache       cache.Cache
 	registry    registry.Registry
