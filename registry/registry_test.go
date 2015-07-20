@@ -59,7 +59,7 @@ func makeJson(svr server) string {
 func TestRegistryBasics(t *testing.T) {
 	reg := NewRegFromJSON(makeJson(servers[0]))
 	assert.NotNil(t, reg)
-	hashes[0] = r.Register(reg)
+	hashes[0] = r.Register(reg, true)
 	reg2 := r.Find(hashes[0])
 	assert.NotNil(t, reg2)
 	assert.Equal(t, reg.Name, reg2.Name)
@@ -72,7 +72,7 @@ func TestRegistryBasics(t *testing.T) {
 func TestRegistryMultiple(t *testing.T) {
 	reg := NewRegFromJSON(makeJson(servers[1]))
 	assert.NotNil(t, reg)
-	hashes[1] = r.Register(reg)
+	hashes[1] = r.Register(reg, true)
 	reg2 := r.Find(hashes[1])
 	assert.NotNil(t, reg2)
 }
@@ -110,7 +110,7 @@ func TestMatchComplex1(t *testing.T) {
 	for i := 0; i < len(servers); i++ {
 		reg := NewRegFromJSON(makeJson(servers[i]))
 		assert.NotNil(t, reg)
-		r.Register(reg)
+		r.Register(reg, true)
 	}
 
 	req := "http://testserver.com/user/login"

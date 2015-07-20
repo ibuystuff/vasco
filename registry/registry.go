@@ -42,13 +42,13 @@ func NewRegistry(theCache cache.Cache) *Registry {
 // expiration time.
 // It also stores its key in a set of items that have been stored, so that it's fast and
 // easy to walk a list of all items in the registry.
-func (r *Registry) Register(reg *Registration) string {
+func (r *Registry) Register(reg *Registration, expire bool) string {
 	stimeout, _ := r.c.Get("Env:DISCOVERY_EXPIRATION")
 	timeout, _ := strconv.Atoi(stimeout)
 	hash := reg.Hash()
 
 	r.c.Set(hash, reg.String())
-	if timeout != 0 {
+	if timeout != 0 && expire {
 		// we give clients 2 extra seconds to refresh before timeout
 		// in case they're using our timeout to trigger refresh
 		r.c.Expire(hash, timeout+2)

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -63,6 +64,10 @@ func makeConfigService(path string, v *Vasco) *restful.WebService {
 		Operation("removeKey").
 		Param(svc.PathParameter("key", "the key to delete").DataType("string")).
 		Returns(http.StatusNotFound, "Key not found", nil))
+
+	svc.Route(svc.GET("/status").To(v.configStatus).
+		Doc("check server status").
+		Operation("configStatus"))
 
 	return svc
 
@@ -124,6 +129,7 @@ func makeStatusService(path string, v *Vasco) *restful.WebService {
 	svc := new(restful.WebService)
 	svc.
 		Path(path).
+		Consumes(restful.MIME_JSON, "text/plain").
 		Doc("Reports aggregated status statistics.")
 
 	svc.Route(svc.GET("").To(v.statusGeneral).
@@ -137,6 +143,12 @@ func makeStatusService(path string, v *Vasco) *restful.WebService {
 		Produces(restful.MIME_JSON).
 		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
 		Operation("statusDetail"))
+
+	svc.Route(svc.GET("/summary").To(v.statusSummary).
+		Doc("Generates summarized status information.").
+		Produces("text/plain").
+		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Operation("statusSummary"))
 
 	return svc
 }
@@ -207,6 +219,10 @@ func (v *Vasco) removeKey(request *restful.Request, response *restful.Response) 
 	}
 }
 
+func (v *Vasco) configStatus(request *restful.Request, response *restful.Response) {
+	// this just returns 200
+}
+
 func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	reg := new(registry.Registration)
 	if err := request.ReadEntity(reg); err != nil {
@@ -215,7 +231,7 @@ func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	if err := reg.SetDefaults(); err != nil {
 		writeError(response, http.StatusForbidden, err)
 	}
-	hash := v.registry.Register(reg)
+	hash := v.registry.Register(reg, true)
 	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
 
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
@@ -270,6 +286,44 @@ func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Respon
 	if !ok {
 		writeError(response, 500, errors.New("At least one server is reporting a failure."))
 	}
+}
+
+func (v *Vasco) statusSummary(request *restful.Request, response *restful.Response) {
+	ok := true
+	summary := fmt.Sprintf("%7s %6s %10s  %s\n", "State", "Code", "Ver", "Name")
+	for k, v := range v.lastStatus {
+		stat := v["StatusCode"]
+		name := k
+		tag := v["deploytag"]
+		if tag == nil || tag == "" {
+			tag = "unknown"
+		}
+		state := "ok"
+		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
+			state = "NOT OK"
+			ok = false
+		}
+		summary += fmt.Sprintf("%7s %6d %10s  %s\n", state, stat, tag, name)
+	}
+	if !ok {
+		writeError(response, 500, errors.New(summary))
+	} else {
+		response.Write([]byte(summary))
+	}
+}
+
+func (v *Vasco) registerConfig(port string) {
+	reg := registry.Registration{
+		Name:    "config",
+		Address: fmt.Sprintf("http://localhost:%s", port),
+		Pattern: "/config/",
+		Stat:    registry.Status{Path: "/config/status"},
+	}
+
+	if err := reg.SetDefaults(); err != nil {
+		log.Println("Error creating self-referencing config registration: ", err)
+	}
+	v.registry.Register(&reg, false)
 }
 
 func (v *Vasco) statusDetail(request *restful.Request, response *restful.Response) {
@@ -388,6 +442,8 @@ func main() {
 	log.Printf("registry listening on port %s", registryPort)
 	server := &http.Server{Addr: ":" + registryPort, Handler: wsContainer}
 	go LandS(server, serverErrors)
+
+	v.registerConfig(registryPort)
 
 	err := <-serverErrors
 	log.Fatal(err)

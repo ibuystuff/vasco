@@ -27,14 +27,14 @@ type Status struct {
 }
 
 type Registration struct {
-	Name    string         `json:"name"`
-	Address string         `json:"address"`
-	Pattern string         `json:"pattern"`
-	Weight  int            `json:"weight,omitempty"`
-	Stat    Status         `json:"status,omitempty"`
-	hash    string         `json:"-"`
-	regex   *regexp.Regexp `json:"-"`
-	url     *url.URL       `json:"-"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Pattern string `json:"pattern"`
+	Weight  int    `json:"weight,omitempty"`
+	Stat    Status `json:"status,omitempty"`
+	hash    string
+	regex   *regexp.Regexp
+	url     *url.URL
 }
 
 func NewRegFromJSON(j string) *Registration {
