@@ -253,6 +253,9 @@ func (v *Vasco) requestPort(request *restful.Request, response *restful.Response
 	for {
 		p = fmt.Sprintf("%d", v.curPort)
 		v.curPort++
+		if v.curPort > v.maxPort {
+			v.curPort = v.minPort
+		}
 		if allports[p] == false {
 			break
 		}
