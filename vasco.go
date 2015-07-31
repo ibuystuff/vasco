@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,15 +28,21 @@ import (
 	"github.com/AchievementNetwork/vasco/registry"
 )
 
-// These will be set by the linker when built using the standard tools
-var SourceRevision string = "Not set"
-var SourceDeployTag string = "Not set"
+// SourceRevision is set during the build process so that status can report it
+var SourceRevision = "Not set"
 
+// SourceDeployTag is set during the build process so that status can report it
+var SourceDeployTag = "Not set"
+
+// Vasco is a struct that manages the collection of data
 type Vasco struct {
 	cache       cache.Cache
 	registry    registry.Registry
 	lastStatus  registry.StatusBlock
 	statusTimer *time.Timer
+	minPort     int
+	maxPort     int
+	curPort     int
 }
 
 func NewVasco(c cache.Cache) *Vasco {
@@ -72,6 +79,11 @@ func makeConfigService(path string, v *Vasco) *restful.WebService {
 	svc.Route(svc.GET("/status").To(v.configStatus).
 		Doc("check server status").
 		Operation("configStatus"))
+
+	svc.Route(svc.GET("/port").To(v.requestPort).
+		Doc("returns a new port identifier that is not currently in use").
+		Operation("requestPort").
+		Writes(0))
 
 	return svc
 
@@ -227,6 +239,29 @@ func (v *Vasco) configStatus(request *restful.Request, response *restful.Respons
 	// this just returns 200
 }
 
+func (v *Vasco) requestPort(request *restful.Request, response *restful.Response) {
+	allports := make(map[string]bool)
+	portpat := regexp.MustCompile(`.+:([0-9]+)\)`)
+	for k, _ := range v.lastStatus {
+		found := portpat.FindStringSubmatch(k)
+		if len(found) > 1 {
+			allports[found[1]] = true
+		}
+	}
+
+	var p string
+	for {
+		p = fmt.Sprintf("%d", v.curPort)
+		v.curPort++
+		if allports[p] == false {
+			break
+		}
+		log.Printf("Port %s is in use, skipped.", p)
+	}
+
+	response.WriteEntity(p)
+}
+
 func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	reg := new(registry.Registration)
 	if err := request.ReadEntity(reg); err != nil {
@@ -373,6 +408,8 @@ func main() {
 	var proxyPort string = getEnvWithDefault("VASCO_PROXY", "8080")
 	var registryPort string = getEnvWithDefault("VASCO_REGISTRY", "8081")
 	var statusPort string = getEnvWithDefault("VASCO_STATUS", "8082")
+	var minPort string = getEnvWithDefault("MINPORT", "8100")
+	var maxPort string = getEnvWithDefault("MINPORT", "9900")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
@@ -390,6 +427,19 @@ func main() {
 	default:
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
+
+	var err error
+	v.minPort, err = strconv.Atoi(minPort)
+	if err != nil {
+		panic("minport must be a number!")
+	}
+
+	v.maxPort, err = strconv.Atoi(maxPort)
+	if err != nil {
+		panic("maxport must be a number!")
+	}
+
+	v.curPort = v.minPort
 
 	v.PreloadFromMap(map[string]string{
 		"Env:DISCOVERY_EXPIRATION": "3600", // the time it takes to expire a server if it disappears
@@ -449,6 +499,6 @@ func main() {
 
 	v.registerConfig(registryPort)
 
-	err := <-serverErrors
+	err = <-serverErrors
 	log.Fatal(err)
 }
