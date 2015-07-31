@@ -412,7 +412,7 @@ func main() {
 	var registryPort string = getEnvWithDefault("VASCO_REGISTRY", "8081")
 	var statusPort string = getEnvWithDefault("VASCO_STATUS", "8082")
 	var minPort string = getEnvWithDefault("MINPORT", "8100")
-	var maxPort string = getEnvWithDefault("MINPORT", "9900")
+	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
