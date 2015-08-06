@@ -379,6 +379,22 @@ func (v *Vasco) statusUpdate() {
 	v.statusTimer = time.AfterFunc(time.Duration(statTime)*time.Second, v.statusUpdate)
 }
 
+// this is a special version of the Transport object that can inject headers into the
+// return request
+type AddAccessHeadersTransport struct {
+	Headers   map[string]string
+	Transport http.RoundTripper
+}
+
+// This implements the RoundTrip function to inject the headers.
+func (t AddAccessHeadersTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.Transport.RoundTrip(req)
+	for k, v := range t.Headers {
+		resp.Header.Add(k, v)
+	}
+	return resp, err
+}
+
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
 // URLs to the scheme and host provided by the registration system. It may
 // rewrite the path as well if that was specified.
@@ -386,7 +402,16 @@ func NewMatchingReverseProxy(v *Vasco) *httputil.ReverseProxy {
 	director := func(req *http.Request) {
 		v.registry.RewriteUrl(req.URL)
 	}
-	return &httputil.ReverseProxy{Director: director}
+
+	// These should probably come from the environment instead
+	acheaders := map[string]string{
+		"Access-Control-Allow-Origin":  "*",
+		"Access-Control-Allow-Methods": "POST, GET, DELETE, PUT",
+		"Access-Control-Allow-Headers": "X-ANET-TOKEN",
+	}
+
+	transport := AddAccessHeadersTransport{Headers: acheaders, Transport: http.DefaultTransport}
+	return &httputil.ReverseProxy{Director: director, Transport: transport}
 }
 
 // goroutine that does a ListenAndServe and reports any errors on the error channel
