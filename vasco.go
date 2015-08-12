@@ -265,6 +265,10 @@ func (v *Vasco) requestPort(request *restful.Request, response *restful.Response
 	response.WriteEntity(p)
 }
 
+func (v *Vasco) refreshStatusSoon() {
+	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
+}
+
 func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	reg := new(registry.Registration)
 	if err := request.ReadEntity(reg); err != nil {
@@ -274,7 +278,7 @@ func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 		writeError(response, http.StatusForbidden, err)
 	}
 	hash := v.registry.Register(reg, true)
-	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
+	v.refreshStatusSoon()
 
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
 	response.WriteEntity(hash)
@@ -290,6 +294,7 @@ func (v *Vasco) refresh(request *restful.Request, response *restful.Response) {
 		return
 	}
 	v.registry.Refresh(reg)
+	v.refreshStatusSoon()
 	log.Printf("Refreshing %s %s\n", reg.Name, reg.Address)
 }
 
@@ -330,9 +335,11 @@ func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Respon
 	}
 }
 
+const sumfmt = "%7s %6s %10s  %s\n"
+
 func (v *Vasco) statusSummary(request *restful.Request, response *restful.Response) {
 	ok := true
-	summary := fmt.Sprintf("%7s %6s %10s  %s\n", "State", "Code", "Ver", "Name")
+	summary := fmt.Sprintf(sumfmt, "State", "Code", "Ver", "Name")
 	for k, v := range v.lastStatus {
 		stat := v["StatusCode"]
 		name := k
@@ -345,8 +352,10 @@ func (v *Vasco) statusSummary(request *restful.Request, response *restful.Respon
 			state = "NOT OK"
 			ok = false
 		}
-		summary += fmt.Sprintf("%7s %6d %10s  %s\n", state, stat, tag, name)
+		summary += fmt.Sprintf(sumfmt, state, strconv.FormatInt(int64(stat.(int)), 10), tag, name)
 	}
+	summary += fmt.Sprintf(sumfmt, "ok", "200", SourceDeployTag, "Vasco")
+
 	if !ok {
 		writeError(response, 500, errors.New(summary))
 	} else {
@@ -389,8 +398,10 @@ type AddAccessHeadersTransport struct {
 // This implements the RoundTrip function to inject the headers.
 func (t AddAccessHeadersTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.Transport.RoundTrip(req)
-	for k, v := range t.Headers {
-		resp.Header.Add(k, v)
+	if err == nil {
+		for k, v := range t.Headers {
+			resp.Header.Add(k, v)
+		}
 	}
 	return resp, err
 }
