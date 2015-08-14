@@ -399,12 +399,17 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	acheaders := map[string]string{
 		"Access-Control-Allow-Origin":  "*",
 		"Access-Control-Allow-Methods": "POST, GET, DELETE, PUT, OPTIONS",
-		"Access-Control-Allow-Headers": "X-ANET-TOKEN",
+		"Access-Control-Allow-Headers": strings.Join([]string{
+			"X-ANET-TOKEN", "X-ACCESS_TOKEN", "Access-Control-Allow-Origin",
+			"Authorization", "Origin", "x-requested-with", "Content-Type",
+			"Content-Range", "Content-Disposition", "Content-Description",
+		}, ","),
 	}
 	for k, v := range acheaders {
 		w.Header().Add(k, v)
 	}
 	if req.Method == "OPTIONS" {
+		log.Printf("Access-Control-Request-Headers: %s", req.Header["Access-Control-Request-Headers"])
 		return
 	}
 	f.H.ServeHTTP(w, req)
