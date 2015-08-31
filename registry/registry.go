@@ -10,7 +10,6 @@ package registry
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -19,12 +18,14 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/AchievementNetwork/go-util/util"
 	"github.com/AchievementNetwork/vasco/cache"
 )
 
 // Registry maintains a private cache of the registry data
 type Registry struct {
-	c cache.Cache
+	StaticPath string
+	c          cache.Cache
 }
 
 type StatusItem map[string]interface{}
@@ -33,8 +34,8 @@ type StatusBlock map[string]StatusItem
 
 // NewRegistry constructs a registry around a cache, which it accepts as an argument
 // (makes it easier to test)
-func NewRegistry(theCache cache.Cache) *Registry {
-	return &Registry{c: theCache}
+func NewRegistry(theCache cache.Cache, staticPath string) *Registry {
+	return &Registry{c: theCache, StaticPath: staticPath}
 }
 
 // Register takes a registration object and stores it so that it can be efficiently
@@ -179,7 +180,7 @@ func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 	case 0:
 		log.Printf("No match found for URL '%s'\n", surl)
 		best = nil
-		err = errors.New("No matching path was found.") // should be 404
+		err = util.WebError{http.StatusNotFound, "No matching path was found."}
 	case 1:
 		err = nil
 		best = matches[0]
@@ -221,8 +222,28 @@ func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 
 func (r *Registry) RewriteUrl(reqUrl *url.URL) error {
 	target, err := r.FindBestMatch(reqUrl.Path)
+
+	// if we got an error and it's a not found error, then
+	// we will forward it to the static server if one is specified
 	if err != nil {
-		return err
+		if r.StaticPath == "" {
+			return err
+		}
+
+		e, ok := err.(util.WebError)
+		if !ok {
+			return err
+		}
+
+		if e.Code != http.StatusNotFound {
+			return err
+		}
+
+		reqUrl.Path = r.StaticPath + reqUrl.Path
+		target, err = r.FindBestMatch(reqUrl.Path)
+		if err != nil {
+			return err
+		}
 	}
 
 	// if the registration pattern included parentheses, we're going to

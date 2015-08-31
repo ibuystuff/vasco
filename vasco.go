@@ -45,8 +45,8 @@ type Vasco struct {
 	curPort     int
 }
 
-func NewVasco(c cache.Cache) *Vasco {
-	r := registry.NewRegistry(c)
+func NewVasco(c cache.Cache, staticPath string) *Vasco {
+	r := registry.NewRegistry(c, staticPath)
 	return &Vasco{cache: c, registry: *r}
 }
 
@@ -450,6 +450,7 @@ func main() {
 	var statusPort string = getEnvWithDefault("VASCO_STATUS", "8082")
 	var minPort string = getEnvWithDefault("MINPORT", "8100")
 	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
+	var staticPath string = getEnvWithDefault("STATIC_PATH", "")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
@@ -463,7 +464,7 @@ func main() {
 	case "redis":
 		log.Fatal("The redis store is not yet implemented.")
 	case "memory":
-		v = NewVasco(cache.NewLocalCache())
+		v = NewVasco(cache.NewLocalCache(), staticPath)
 	default:
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
@@ -482,8 +483,9 @@ func main() {
 	v.curPort = v.minPort
 
 	v.PreloadFromMap(map[string]string{
-		"Env:DISCOVERY_EXPIRATION": "3600", // the time it takes to expire a server if it disappears
-		"Env:STATUS_TIME":          "60",   // the time between status checks
+		"Env:DISCOVERY_EXPIRATION": "3600",    // the time it takes to expire a server if it disappears
+		"Env:STATUS_TIME":          "60",      // the time between status checks
+		"ProxyPort":                proxyPort, // the port number used for internal proxying
 	})
 	v.PreloadFromEnvironment("DISCOVERY_CONFIG")
 
