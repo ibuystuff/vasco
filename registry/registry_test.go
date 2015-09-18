@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 	// always starts wiped clean
 	c = cache.NewLocalCache()
 	defer c.Close()
-	r = NewRegistry(c)
+	r = NewRegistry(c, "/tmp")
 
 	memResult := m.Run()
 

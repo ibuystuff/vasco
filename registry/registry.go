@@ -180,7 +180,7 @@ func (r *Registry) FindBestMatch(surl string) (best *Registration, err error) {
 	case 0:
 		log.Printf("No match found for URL '%s'\n", surl)
 		best = nil
-		err = util.WebError{http.StatusNotFound, "No matching path was found."}
+		err = util.NewWebError(http.StatusNotFound, "VASCO-100", "No matching path was found.")
 	case 1:
 		err = nil
 		best = matches[0]
@@ -230,7 +230,7 @@ func (r *Registry) RewriteUrl(reqUrl *url.URL) error {
 			return err
 		}
 
-		e, ok := err.(util.WebError)
+		e, ok := err.(*util.WebError)
 		if !ok {
 			return err
 		}
