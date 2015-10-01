@@ -316,6 +316,7 @@ func (v *Vasco) unregister(request *restful.Request, response *restful.Response)
 	hash := request.PathParameter("hash")
 	v.registry.Unregister(v.registry.Find(hash))
 	log.Printf("Unregistered %s\n", hash)
+	v.refreshStatusSoon()
 }
 
 func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Response) {
@@ -331,14 +332,14 @@ func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Respon
 	}
 }
 
-const sumfmt = "%7s %6s %10s  %s\n"
+const sumfmt = "%7s %6s %16s  %s\n"
 
 func (v *Vasco) statusSummary(request *restful.Request, response *restful.Response) {
 	ok := true
 	summary := fmt.Sprintf(sumfmt, "State", "Code", "Ver", "Name")
-	for k, v := range v.lastStatus {
+	for _, v := range v.lastStatus {
 		stat := v["StatusCode"]
-		name := k
+		name := v["Name"]
 		tag := v["deploytag"]
 		if tag == nil || tag == "" {
 			tag = "unknown"
