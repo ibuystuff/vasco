@@ -16,7 +16,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/AchievementNetwork/go-util/util"
 	"github.com/AchievementNetwork/vasco/cache"
@@ -30,7 +32,15 @@ type Registry struct {
 
 type StatusItem map[string]interface{}
 
-type StatusBlock map[string]StatusItem
+type StatusBlock []StatusItem
+
+type byName StatusBlock
+
+func (a byName) Len() int      { return len(a) }
+func (a byName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byName) Less(i, j int) bool {
+	return a[i]["Name"].(string)+a[i]["Port"].(string) < a[j]["Name"].(string)+a[j]["Port"].(string)
+}
 
 // NewRegistry constructs a registry around a cache, which it accepts as an argument
 // (makes it easier to test)
@@ -97,9 +107,16 @@ func (r *Registry) DetailedStatus() StatusBlock {
 			}
 			item["StatusCode"] = result.StatusCode
 		}
-		statusKey := reg.Name + "(" + reg.Address + ")"
-		statuses[statusKey] = item
+		item["Name"] = reg.Name
+		item["Address"] = reg.Address
+		item["Port"] = ""
+		hs := strings.Split(u.Host, ":")
+		if len(hs) == 2 {
+			item["Port"] = hs[1]
+		}
+		statuses = append(statuses, item)
 	}
+	sort.Sort(byName(statuses))
 	return statuses
 }
 

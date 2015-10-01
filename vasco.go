@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -241,12 +240,9 @@ func (v *Vasco) configStatus(request *restful.Request, response *restful.Respons
 
 func (v *Vasco) requestPort(request *restful.Request, response *restful.Response) {
 	allports := make(map[string]bool)
-	portpat := regexp.MustCompile(`.+:([0-9]+)\)`)
-	for k, _ := range v.lastStatus {
-		found := portpat.FindStringSubmatch(k)
-		if len(found) > 1 {
-			allports[found[1]] = true
-		}
+	for _, item := range v.lastStatus {
+		port := item["Port"].(string)
+		allports[port] = true
 	}
 
 	var p string
