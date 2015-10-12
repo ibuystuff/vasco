@@ -14,7 +14,7 @@ fi
 mkdir -p build
 if go get -d; then
     # stamp the revision and version into the built executable
-    if go build -o $OUTPUTFILE -ldflags "-X main.SourceRevision $REVISION -X main.SourceDeployTag $VERSION"; then
+    if go build -o $OUTPUTFILE -ldflags "-X main.SourceRevision=$REVISION -X main.SourceDeployTag=$VERSION"; then
         cp start.sh build
     else
         echo "build failed"
