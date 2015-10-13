@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/AchievementNetwork/vasco/cache"
-	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful"
-	"github.com/AchievementNetwork/vasco/internal/github.com/emicklei/go-restful/swagger"
 	"github.com/AchievementNetwork/vasco/registry"
+	"github.com/emicklei/go-restful"
+	"github.com/emicklei/go-restful/swagger"
 )
 
 // SourceRevision is set during the build process so that status can report it
