@@ -330,6 +330,7 @@ func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Respon
 	if !ok {
 		writeError(response, 500, errors.New("At least one server is reporting a failure."))
 	}
+	v.refreshStatusSoon()
 }
 
 const sumfmt = "%7s %6s %16s  %s\n"
@@ -358,6 +359,7 @@ func (v *Vasco) statusSummary(request *restful.Request, response *restful.Respon
 	} else {
 		response.Write([]byte(summary))
 	}
+	v.refreshStatusSoon()
 }
 
 func (v *Vasco) registerConfig(port string) {
@@ -376,6 +378,7 @@ func (v *Vasco) registerConfig(port string) {
 
 func (v *Vasco) statusDetail(request *restful.Request, response *restful.Response) {
 	response.WriteEntity(v.lastStatus)
+	v.refreshStatusSoon()
 }
 
 func (v *Vasco) statusUpdate() {
