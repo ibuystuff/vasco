@@ -2,7 +2,7 @@
 
 This is ANet's discovery server, named after Vasco de Gama, who was a Portugese explorer who found the first navigable water route from Europe to India, opening up an age of trade.
 
-The purpose of the server is to provide discovery services to a collection of other servers, allowing them to find one another without needing to know very much. It acts as a load balancer as well.
+The purpose of the server is to provide discovery services and routing to a collection of other servers, allowing services to by found by each other and their clients without needing to know very much. It acts as a load balancer as well.
 
 This system was designed by following the premise that the goal of server operations is to reduce the number of places with a list of machines to as close to zero as possible. It supports the idea of either setting up configuration at the same time as the services, or of allowing services to register themselves.
 
@@ -13,7 +13,7 @@ Once services are registered, Vasco then acts as a reverse proxy and load balanc
     ```bash
     git clone git@github.com:AchievementNetwork/vasco.git
     go get
-    go build
+    ./build.sh
     ```
 
 ## Design
@@ -21,9 +21,10 @@ Once services are registered, Vasco then acts as a reverse proxy and load balanc
 * Vasco supports two ports -- one is intended to be public, one is intended to be private (behind the firewall).
 * The private port has a DNS name that is visible behind the firewall. Let's call it "vasco.anet.io".
 * When a server wakes up, it contacts vasco.anet.io and says "Hi, my name is 'user' and I respond to queries that match the pattern "/user/".
-* Servers must maintain connectivity. Vasco periodically makes status queries, and will stop forwarding to a server if it fails to respond to a status query OR to a forwarded query.
-* Client servers must include in their registration packets the mechanism for making status queries - Vasco periodically pings them and if they fail to respond it will stop distributing to them; once they start responding again it will re-enable them.
-* The clients should consider adding a timeout to the status check endpoint. If they don't receive periodic pings, they should assume that Vasco has crashed or otherwise lost the connection and attempt re-discovery.
+* Servers must maintain connectivity. Vasco periodically makes status queries and aggregates the responses on its own status port. (Still to be implemented: stop forwarding to a server if it fails to respond to a status query, fails to respond to a forwarded query, or returns 5xx from a forwarded query.)
+* Client servers must include in their registration packets the mechanism for making status queries.
+* Servers must also maintain connectivity by pinging the vasco refresh endpoint. If a server fails to do this, after the timeout it will be unregistered.
+* The default vasco client will force re-registration on a SIGHUP, and also keeps connectivity alive with the refresh prompt.
 * Vasco receives queries and reverse-proxies them to the servers.
 
 ## API
@@ -39,7 +40,6 @@ Once services are registered, Vasco then acts as a reverse proxy and load balanc
                 Configuration can be set up in several ways:
                     [x] Set up as default values by the vasco app. This is done for certain configuration parameters like:
                         DISCOVERY_EXPIRATION = 60       // the time it takes for discovery records to expire
-                    [ ] read from the AWS user data (set at instance setup time) as a JSON object. Text read from the configuration is loaded as a JSON object (keys and values must be strings) -- if it contains a key called "discovery", that value is the initial value for the configuration keys -- otherwise, the entire object is used. So { "foo": 1, "bar": "space" } ends up as /config/foo and /config/bar, as does {"discovery": { "foo": 1, "bar": "space" }, "test":"blah" }.
                     [x] Then configuration values are read from the environment for the process. The environment variable DISCOVERY_CONFIG is read, again as a JSON object, and that object is merged with the existing environment (possibly overwriting values read from the user data).
                     [x] Finally, configuration values set with PUT are applied.
             /register goes to discovery server locally
@@ -53,17 +53,14 @@ Once services are registered, Vasco then acts as a reverse proxy and load balanc
                 [x] GET /register/test/url
                     Returns the result of the load balancer (the registration object that the LB would resolve to this time -- repeating this request may return a different result.)
 
-        External server has one pre-defined endpoint:
-            [ ] /status/{validation} reports a status block containing top-level status information a JSON object with status information for all servers that are currently registered. The validation string is specified in the configuration so that configuration information is not casually leaked.
+        External server has status endpoints predefined:
+            [x] /status returns 200 if all servers are responding with 200-class status returns, and 500 if any server is failing.
+            [x] /status/summary returns a one-line summary for each server in human-readable form
+            [x] /status/detail returns a block of JSON, containing the JSON responses for each individual server.
+            [ ] The detail status endpoint should probably be protected in some way, as it leaks a lot of information.
 
-            [x] Any other URL is load-balanced and if found, the result is reverse-proxied to the caller. If nothing matches, the discovery server generates a 404 unless a default URL is registered.
+            [x] Any other URL is load-balanced and if found, the result is reverse-proxied to the caller. If no existing server matches, vasco forwards the request to the static server (which is specified in the config).
 
-        The myAddr parameter can be any valid domain name or IP address, and may include a port number.
-        So:
-            192.168.1.100:8080
-            192.168.1.100
-            localhost:8080
-            my.server.com
 
 Registration is a JSON object that supports the following fields:
 
@@ -99,18 +96,9 @@ weight:
 
 status:
 
-    [ ] A JSON object specifying the status behavior:
+    [x] A JSON object specifying the status behavior:
     path:
-        specify the path to be used to check status of the server (this path is concatenated with the address field to build a status query). Status is checked every N seconds, where N is defined in the Vasco configuration. A 200 reply means the server is up and functioning. A payload may be delivered with more detailed status information. It is returned as part of the discover server's status block (if it successfully parses as a JSON object, it is delivered that way, otherwise as a string). Default is myAddr/status.
-
-    downcount:
-        An integer. The server is marked as out of service if it fails to reply to a status request (times out) this many times in a row. Default = 2. Note that if a server replies with a non-200 value it is marked down immediately. This can be used to throttle requests to a server under heavy load.
-
-    upcount:
-        An integer. After being marked out of service, the server must respond 200 to this many repeated requests in order to be considered "up". Default = 3.
-
-    timeout:
-        An integer number of milliseconds before a request should be considered nonresponsive. Default = 500 msec.
+        specify the path to be used to check status of the server (this path is concatenated with the address field to build a status query). Status is checked every N seconds, where N is defined in the Vasco configuration. A 200 reply means the server is up and functioning. A payload may be delivered with more detailed status information. It is returned as part of the discover server's status block (if it successfully parses as a JSON object, it is delivered that way, otherwise as a string). This must be specified.
 
 
 Example
@@ -120,37 +108,15 @@ Example
 
         That will forward everything to discoveryserver/foo to my.address/foo
 
-Status:
-    [ ] Returns a status block like this:
-
-    {
-        summary: "All servers up" // or "All services up but some servers down" or "Some services down."
-        // summary exists so that services like pingdom can get an easy answer for "is everything ok?"
-        serverAddr : {
-            registeredAt: "2015-03-05T08:43:12.123Z",
-            pingsUp: 1233,
-            pingsDown: 17
-            currentStatus: "up"  // or "down" or "failing" (when it hasn't reached downcount yet) or "recovering" (when it hasn't reached upcount yet after being down)
-            serving: [ (list of patterns it is serving) ]
-            lastDownAt: "2015-03-05T08:43:12.123Z" // the last time the server transitioned to Down
-            lastUpAt: "2015-03-05T08:43:12.123Z" // the last time the server transitioned to Up
-        }
-    }
-
 
 
 ## Short term ToDos
 Things Vasco still needs:
 
-* Make ports and other info configurable
-    * Ability to insert URL into swagger
-    * Generate proper 404s
+* Ability to insert URL into swagger
+* Generate proper 404s
 * Clean up documentation for godoc
 * Moar errors
-* Separate util library
-* Separate stringset library
-* Start checking status URLs
-* Clean up status URL stuff
 
 ## Longer term
 

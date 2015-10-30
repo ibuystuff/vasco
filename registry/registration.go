@@ -21,9 +21,7 @@ import (
 )
 
 type Status struct {
-	Path      string `json:"path"`
-	Downcount int    `json:"downcount,omitempty"`
-	Upcount   int    `json:"upcount,omitempty"`
+	Path string `json:"path"`
 }
 
 type Registration struct {
@@ -96,12 +94,6 @@ func (r *Registration) SetDefaults() error {
 	}
 	if r.Weight == 0 {
 		r.Weight = 100
-	}
-	if r.Stat.Downcount == 0 {
-		r.Stat.Downcount = 2
-	}
-	if r.Stat.Upcount == 0 {
-		r.Stat.Upcount = 3
 	}
 	return nil
 }
