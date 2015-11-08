@@ -46,10 +46,11 @@ func NewRegFromJSON(j string) *Registration {
 	}
 }
 
-func Hash(a, b string) string {
+func Hash(a ...string) string {
 	h := md5.New()
-	io.WriteString(h, a)
-	io.WriteString(h, b)
+	for _, i := range a {
+		io.WriteString(h, i)
+	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 

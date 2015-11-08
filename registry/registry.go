@@ -34,6 +34,15 @@ type StatusItem map[string]interface{}
 
 type StatusBlock []StatusItem
 
+func (s StatusItem) Get(name string) string {
+	switch t := s[name].(type) {
+	case string:
+		return t
+	default:
+		return ""
+	}
+}
+
 type byName StatusBlock
 
 func (a byName) Len() int      { return len(a) }
@@ -113,6 +122,18 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		hs := strings.Split(u.Host, ":")
 		if len(hs) == 2 {
 			item["Port"] = hs[1]
+		}
+
+		if item.Get("Error") == "" {
+			item["ID"] = Hash(
+				item.Get("starttime"),
+				item.Get("Name"),
+				item.Get("revision"),
+				item.Get("configtype"),
+				item.Get("configversion"),
+				item.Get("Address"),
+				item.Get("Port"),
+			)
 		}
 		statuses = append(statuses, item)
 	}
