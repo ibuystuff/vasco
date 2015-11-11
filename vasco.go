@@ -496,6 +496,17 @@ func main() {
 
 	statusContainer := restful.NewContainer()
 	statusContainer.Router(restful.CurlyRouter{})
+	// Add container filter to enable CORS
+	cors := restful.CrossOriginResourceSharing{
+		// ExposeHeaders:  []string{"X-My-Header"},
+		AllowedHeaders: []string{"Content-Type", "Accept"},
+		CookiesAllowed: false,
+		Container:      statusContainer}
+	statusContainer.Filter(cors.Filter)
+
+	// Add container filter to respond to OPTIONS
+	// statusContainer.Filter(wsContainer.OPTIONSFilter)
+
 	v.RegisterStatusContainer(statusContainer)
 
 	if useSwagger {
