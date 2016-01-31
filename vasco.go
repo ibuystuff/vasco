@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AchievementNetwork/go-util/util"
 	"github.com/AchievementNetwork/vasco/cache"
 	"github.com/AchievementNetwork/vasco/registry"
 	"github.com/emicklei/go-restful"
@@ -385,6 +386,22 @@ func (v *Vasco) statusUpdate() {
 	statSTime, _ := v.cache.Get("Env:STATUS_TIME")
 	statTime, _ := strconv.Atoi(statSTime)
 	v.lastStatus = v.registry.DetailedStatus()
+	vascostat := registry.StatusItem{
+		"Name":          "vasco",
+		"Port":          getEnvWithDefault("VASCO_REGISTRY", "8081"),
+		"Revision":      SourceRevision,
+		"DeployTag":     SourceDeployTag,
+		"DeployType":    os.Getenv("DEPLOYTYPE"),
+		"ConfigVersion": os.Getenv("CONFIGVERSION"),
+	}
+	if ip, err := util.ExternalIP(); err != nil {
+		vascostat["IP"] = err.Error()
+	} else {
+		vascostat["IP"] = ip
+		vascostat["Address"] = "http://" + ip + ":" + vascostat["Port"].(string)
+	}
+
+	v.lastStatus = append(v.lastStatus, vascostat)
 	v.statusTimer = time.AfterFunc(time.Duration(statTime)*time.Second, v.statusUpdate)
 }
 

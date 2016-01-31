@@ -1,0 +1,40 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+    "build_systems":
+    [
+        {
+            "name": "Build",
+            "cmd": ["go","build"],
+            "file_regex": "^[ \t]*([^:]+):([0-9]+):()(.+)$",
+        },
+        {
+            "name": "Test All",
+            "cmd": ["go", "test", "./..."],
+            "file_regex": "^[ \t]*([^:]+):([0-9]+):()(.+)$",
+            "working_dir": "$project_path",
+        },
+        {
+            "name": "Test Current",
+            "cmd": ["go", "test"],
+            "file_regex": "^[ \t]*([^:]+):([0-9]+):()(.+)$",
+            "working_dir": "$file_path",
+        },
+        {
+            "name": "Generate",
+            "cmd": ["go", "generate", "./..."],
+            "file_regex": "^[ \t]*([^:]+):([0-9]+):()(.+)$",
+            "working_dir": "$project_path",
+        },
+        {
+            "name": "Vet",
+            "cmd": ["go", "tool", "vet", "-all", "."],
+            "file_regex": "^[ \t]*([^:]+):([0-9]+):()(.+)$",
+            "working_dir": "$project_path",
+        },
+    ]
+}
