@@ -353,7 +353,6 @@ func (v *Vasco) statusSummary(request *restful.Request, response *restful.Respon
 		}
 		summary += fmt.Sprintf(sumfmt, state, strconv.FormatInt(int64(stat.(int)), 10), tag, name)
 	}
-	summary += fmt.Sprintf(sumfmt, "ok", "200", SourceDeployTag, "Vasco")
 
 	if !ok {
 		writeError(response, 500, errors.New(summary))
@@ -390,10 +389,10 @@ func (v *Vasco) statusUpdate() {
 		"Name":          "vasco",
 		"Port":          getEnvWithDefault("VASCO_REGISTRY", "8081"),
 		"Revision":      SourceRevision,
-		"DeployTag":     SourceDeployTag,
-		"DeployType":    os.Getenv("DEPLOYTYPE"),
-		"ConfigVersion": os.Getenv("CONFIGVERSION"),
 		"StatusCode":    200,
+		"deploytag":     SourceDeployTag,
+		"deploytype":    os.Getenv("DEPLOYTYPE"),
+		"configversion": os.Getenv("CONFIGVERSION"),
 	}
 	if ip, err := util.ExternalIP(); err != nil {
 		vascostat["IP"] = err.Error()
