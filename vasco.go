@@ -393,6 +393,7 @@ func (v *Vasco) statusUpdate() {
 		"deploytag":     SourceDeployTag,
 		"configtype":    os.Getenv("DEPLOYTYPE"),
 		"configversion": os.Getenv("CONFIGVERSION"),
+		"pid":           os.Getpid(),
 	}
 	if ip, err := util.ExternalIP(); err != nil {
 		vascostat["IP"] = err.Error()
