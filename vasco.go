@@ -270,16 +270,17 @@ func (v *Vasco) register(request *restful.Request, response *restful.Response) {
 	reg := new(registry.Registration)
 	if err := request.ReadEntity(reg); err != nil {
 		writeError(response, http.StatusForbidden, err)
+		return
 	}
 	if err := reg.SetDefaults(); err != nil {
 		writeError(response, http.StatusForbidden, err)
+		return
 	}
 	hash := v.registry.Register(reg, true)
 	v.refreshStatusSoon()
 
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
 	response.WriteEntity(hash)
-	response.WriteHeader(http.StatusOK)
 }
 
 func (v *Vasco) refresh(request *restful.Request, response *restful.Response) {
@@ -300,13 +301,15 @@ func (v *Vasco) testRegistration(request *restful.Request, response *restful.Res
 	url := request.QueryParameter("url")
 	if url == "" {
 		writeError(response, http.StatusNotFound, errors.New("url query parameter required"))
+		return
 	}
-	if match, err := v.registry.FindBestMatch(url); err != nil {
+	match, err := v.registry.FindBestMatch(url)
+	if err != nil {
 		writeError(response, http.StatusNotFound, err)
-	} else {
-		response.WriteEntity(match)
-		response.WriteHeader(http.StatusOK)
+		return
 	}
+	response.WriteEntity(match)
+	response.WriteHeader(http.StatusOK)
 }
 
 func (v *Vasco) whoami(request *restful.Request, response *restful.Response) {
@@ -321,17 +324,12 @@ func (v *Vasco) unregister(request *restful.Request, response *restful.Response)
 }
 
 func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Response) {
-	ok := true
 	for _, v := range v.lastStatus {
 		stat := v["StatusCode"]
 		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
-			ok = false
+			log.Printf("Status problem %d on %s", stat, v["Name"])
 		}
 	}
-	if !ok {
-		writeError(response, 500, errors.New("At least one server is reporting a failure."))
-	}
-	v.refreshStatusSoon()
 }
 
 const sumfmt = "%7s %6s %16s  %s\n"
