@@ -159,7 +159,8 @@ func makeStatusService(path string, v *Vasco) *restful.WebService {
 		Doc("Generates detailed status information.").
 		Produces(restful.MIME_JSON).
 		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
-		Operation("statusDetail"))
+		Operation("statusDetail").
+		Writes(registry.StatusBlock))
 
 	svc.Route(svc.GET("/summary").To(v.statusSummary).
 		Doc("Generates summarized status information.").
