@@ -110,7 +110,8 @@ func makeRegisterService(path string, v *Vasco) *restful.WebService {
 		Operation("register").
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON).
-		Reads(registry.Registration{}))
+		Reads(registry.Registration{}).
+		Writes(""))
 
 	svc.Route(svc.PUT("/{hash}").To(v.refresh).
 		Doc("refresh an existing registration object (I'm still here)").
