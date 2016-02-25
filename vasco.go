@@ -267,17 +267,19 @@ func (v *Vasco) refreshStatusSoon() {
 }
 
 func (v *Vasco) register(request *restful.Request, response *restful.Response) {
+	v.refreshStatusSoon()
 	reg := new(registry.Registration)
 	if err := request.ReadEntity(reg); err != nil {
+		log.Printf("Couldn't read registration request: ", err.Error())
 		writeError(response, http.StatusForbidden, err)
 		return
 	}
 	if err := reg.SetDefaults(); err != nil {
+		log.Printf("Couldn't set defaults: ", err.Error())
 		writeError(response, http.StatusForbidden, err)
 		return
 	}
 	hash := v.registry.Register(reg, true)
-	v.refreshStatusSoon()
 
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
 	response.WriteEntity(hash)
