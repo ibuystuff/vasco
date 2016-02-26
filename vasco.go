@@ -510,6 +510,7 @@ func main() {
 	v.PreloadFromEnvironment("DISCOVERY_CONFIG")
 
 	restful.EnableTracing(true)
+	restful.DefaultResponseContentType(restful.MIME_JSON)
 	wsContainer := restful.NewContainer()
 	wsContainer.Router(restful.CurlyRouter{})
 	v.RegisterContainer(wsContainer)
