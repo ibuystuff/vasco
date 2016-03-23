@@ -432,7 +432,12 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 		log.Printf("Access-Control-Request-Headers: %s", req.Header["Access-Control-Request-Headers"])
 		return
 	}
+
+	t := time.Now()
 	f.H.ServeHTTP(w, req)
+	dt := time.Now().Sub(t) / time.Microsecond
+
+	log.Printf("%s -> %s: %d uSec", req.RequestURI, req.URL.String(), dt)
 }
 
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
