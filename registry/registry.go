@@ -265,6 +265,7 @@ func (r *Registry) RewriteUrl(reqUrl *url.URL) error {
 	// we will forward it to the static server if one is specified
 	if err != nil {
 		if r.StaticPath == "" {
+			fmt.Println("Static path was null so we can't forward the request.")
 			return err
 		}
 
@@ -280,6 +281,7 @@ func (r *Registry) RewriteUrl(reqUrl *url.URL) error {
 		reqUrl.Path = r.StaticPath + reqUrl.Path
 		target, err = r.FindBestMatch(reqUrl.Path)
 		if err != nil {
+			fmt.Println("Error - Static lookup failed! ", err.Error())
 			return err
 		}
 	}
