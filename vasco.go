@@ -45,8 +45,8 @@ type Vasco struct {
 	curPort     int
 }
 
-func NewVasco(c cache.Cache, staticPath string) *Vasco {
-	r := registry.NewRegistry(c, staticPath)
+func NewVasco(c cache.Cache, staticPath string, expected string) *Vasco {
+	r := registry.NewRegistry(c, staticPath, expected)
 	return &Vasco{cache: c, registry: *r}
 }
 
@@ -336,7 +336,7 @@ func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Respon
 	}
 }
 
-const sumfmt = "%7s %6s %16s  %s\n"
+const sumfmt = "%7s %6s %26s  %s\n"
 
 func (v *Vasco) statusSummary(request *restful.Request, response *restful.Response) {
 	ok := true
@@ -476,6 +476,7 @@ func main() {
 	var minPort string = getEnvWithDefault("MINPORT", "8100")
 	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
 	var staticPath string = getEnvWithDefault("STATIC_PATH", "")
+	var expectedServices string = getEnvWithDefault("EXPECTED_SERVICES", "")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
@@ -489,7 +490,7 @@ func main() {
 	case "redis":
 		log.Fatal("The redis store is not yet implemented.")
 	case "memory":
-		v = NewVasco(cache.NewLocalCache(), staticPath)
+		v = NewVasco(cache.NewLocalCache(), staticPath, expectedServices)
 	default:
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
