@@ -21,13 +21,15 @@ import (
 	"strings"
 
 	"github.com/AchievementNetwork/go-util/util"
+	"github.com/AchievementNetwork/stringset"
 	"github.com/AchievementNetwork/vasco/cache"
 )
 
 // Registry maintains a private cache of the registry data
 type Registry struct {
-	StaticPath string
-	c          cache.Cache
+	StaticPath       string
+	ExpectedServices *stringset.StringSet
+	c                cache.Cache
 }
 
 type StatusItem map[string]interface{}
@@ -53,8 +55,22 @@ func (a byName) Less(i, j int) bool {
 
 // NewRegistry constructs a registry around a cache, which it accepts as an argument
 // (makes it easier to test)
-func NewRegistry(theCache cache.Cache, staticPath string) *Registry {
-	return &Registry{c: theCache, StaticPath: staticPath}
+// expected is a space-separated set of strings corresponding to
+// server names; status calls will include information about unexpected
+// or missing servers.
+func NewRegistry(theCache cache.Cache, staticPath string, expected string) *Registry {
+	r := Registry{
+		c:                theCache,
+		StaticPath:       staticPath,
+		ExpectedServices: stringset.New(),
+	}
+	exp := strings.Split(expected, " ")
+	r.ExpectedServices.Add(exp...)
+	// don't allow empty strings in the expected set
+	if r.ExpectedServices.Contains("") {
+		r.ExpectedServices.Delete("")
+	}
+	return &r
 }
 
 // Register takes a registration object and stores it so that it can be efficiently
@@ -98,6 +114,7 @@ func (r *Registry) Unregister(reg *Registration) {
 }
 
 func (r *Registry) DetailedStatus() StatusBlock {
+	notfound := r.ExpectedServices.Clone()
 	statuses := StatusBlock{}
 	regs := r.getAllRegistrations()
 	for _, reg := range regs {
@@ -135,6 +152,23 @@ func (r *Registry) DetailedStatus() StatusBlock {
 				item.Get("Port"),
 			)
 		}
+		if notfound.Contains(item.Get("Name")) {
+			notfound.Delete(item.Get("Name"))
+		} else {
+			// cope with the possibility that we have more than
+			// one copy of a service
+			if !r.ExpectedServices.Contains(item.Get("Name")) {
+				item["unexpected"] = true
+			}
+		}
+		statuses = append(statuses, item)
+	}
+	for _, name := range notfound.Strings() {
+		item := StatusItem{}
+		item["Name"] = name
+		item["Port"] = ""
+		item["Error"] = "Expected service not found."
+		item["StatusCode"] = http.StatusServiceUnavailable
 		statuses = append(statuses, item)
 	}
 	sort.Sort(byName(statuses))
