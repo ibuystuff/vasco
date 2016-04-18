@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AchievementNetwork/stringset"
@@ -20,12 +21,17 @@ type cacheValue struct {
 // an in-memory implementation of the Cache
 // great for testing or for deploying on a small scale
 type LocalCache struct {
-	values map[string]cacheValue
-	sets   map[string]*stringset.StringSet
+	values     map[string]cacheValue
+	valuemutex sync.RWMutex
+	sets       map[string]*stringset.StringSet
+	setmutex   sync.RWMutex
 }
 
 func NewLocalCache() *LocalCache {
-	c := LocalCache{values: make(map[string]cacheValue), sets: make(map[string]*stringset.StringSet)}
+	c := LocalCache{
+		values: make(map[string]cacheValue),
+		sets:   make(map[string]*stringset.StringSet),
+	}
 	return &c
 }
 
@@ -33,20 +39,29 @@ func (c *LocalCache) Close() {
 }
 
 func (c *LocalCache) Set(key string, value string) (err error) {
+	c.valuemutex.Lock()
 	c.values[key] = cacheValue{value: value, exp: 0}
+	c.valuemutex.Unlock()
 	err = nil
 	return
 }
 
 func (c *LocalCache) getUnexpired(key string, now int64) (item cacheValue, err error) {
-	if v, ok := c.values[key]; ok {
+	c.valuemutex.RLock()
+	v, ok := c.values[key]
+	c.valuemutex.RUnlock()
+
+	if ok {
 		// fmt.Printf("%s %d %d\n", key, now, v.exp)
 		if v.exp == 0 || now < v.exp {
 			item = v
 			return
 		}
+		c.valuemutex.Lock()
 		delete(c.values, key) // key has expired
+		c.valuemutex.Unlock()
 	}
+
 	err = errors.New("Key not found")
 	return
 }
@@ -61,8 +76,14 @@ func (c *LocalCache) Get(key string) (value string, err error) {
 }
 
 func (c *LocalCache) Delete(key string) (err error) {
-	if _, ok := c.values[key]; ok {
-		delete(c.values, key)
+	c.valuemutex.RLock()
+	_, ok := c.values[key]
+	c.valuemutex.RUnlock()
+
+	if ok {
+		c.valuemutex.Lock()
+		delete(c.values, key) // key has expired
+		c.valuemutex.Unlock()
 		return
 	}
 	err = errors.New("Key not found")
@@ -84,26 +105,36 @@ func (c *LocalCache) ExpireAt(key string, timestamp int64) (err error) {
 }
 
 func (c *LocalCache) SAdd(key string, values ...string) (err error) {
+	c.setmutex.Lock()
 	s, ok := c.sets[key]
+
 	if !ok {
 		s = stringset.New()
 	}
 	s.Add(values...)
 	c.sets[key] = s
+	c.setmutex.Unlock()
 	return
 }
 
 func (c *LocalCache) SGet(key string) (values []string, err error) {
-	if s, ok := c.sets[key]; ok {
+	c.setmutex.RLock()
+	s, ok := c.sets[key]
+
+	if ok {
 		values = s.Strings()
 	} else {
 		err = errors.New("Key not found")
 	}
+	c.setmutex.RUnlock()
 	return
 }
 
 func (c *LocalCache) SRemove(key string, values ...string) (err error) {
-	if s, ok := c.sets[key]; ok {
+	c.setmutex.Lock()
+	s, ok := c.sets[key]
+
+	if ok {
 		s.Delete(values...)
 		// if we've removed the last item, delete the key
 		if s.Length() == 0 {
@@ -114,26 +145,35 @@ func (c *LocalCache) SRemove(key string, values ...string) (err error) {
 	} else {
 		err = errors.New("Key not found")
 	}
+	c.setmutex.Unlock()
 	return
 }
 
 func (c *LocalCache) SCount(key string) (count int, err error) {
-	if s, ok := c.sets[key]; ok {
+	c.setmutex.RLock()
+	s, ok := c.sets[key]
+
+	if ok {
 		count = s.Length()
 	} else {
 		err = errors.New("Key not found")
 	}
+	c.setmutex.RUnlock()
 	return
 }
 
 func (c *LocalCache) SRandMember(key string) (value string, err error) {
-	if s, ok := c.sets[key]; ok {
+	c.setmutex.RLock()
+	s, ok := c.sets[key]
+
+	if ok {
 		all := s.Strings()
 		r := rand.Intn(len(all))
 		value = all[r]
 	} else {
 		err = errors.New("Key not found")
 	}
+	c.setmutex.RUnlock()
 	return
 }
 
@@ -147,7 +187,9 @@ func (c *LocalCache) ZAdd(key string, score int, value string) (err error) {
 
 func (c *LocalCache) ZRem(key string, value string) (err error) {
 	zkey := "Z" + key
+	c.setmutex.RLock()
 	all, ok := c.sets[zkey]
+	c.setmutex.RUnlock()
 	if !ok {
 		return
 	}
