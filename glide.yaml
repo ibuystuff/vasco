@@ -1,0 +1,21 @@
+package: github.com/achievementnetwork/vasco
+import:
+- package: github.com/AchievementNetwork/go-util
+  version: ~1.0.0
+  subpackages:
+  - util
+- package: github.com/AchievementNetwork/stringset
+- package: github.com/AchievementNetwork/vasco
+  version: ~0.16.11
+  subpackages:
+  - cache
+  - registry
+- package: github.com/emicklei/go-restful
+  version: ~1.2.0
+  subpackages:
+  - swagger
+testImport:
+- package: github.com/stretchr/testify
+  version: ~1.1.3
+  subpackages:
+  - assert
