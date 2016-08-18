@@ -1,0 +1,32 @@
+hash: 4368ea2e8fc71a546d8b565deb27df3431153b722b888bcc8bd8959aa2a28a9f
+updated: 2016-08-17T22:23:10.385173577-04:00
+imports:
+- name: github.com/AchievementNetwork/go-util
+  version: 583c8a97bfc784149aa192d564cbc2e194a4af11
+  subpackages:
+  - util
+- name: github.com/AchievementNetwork/stringset
+  version: d4ea4c4c14bdfc47fd4b19fc88133ee01db8ca80
+- name: github.com/AchievementNetwork/vasco
+  version: 0b259d5add07a9dfc902d9e93a96e563a02cb2ef
+  subpackages:
+  - cache
+  - registry
+- name: github.com/emicklei/go-restful
+  version: 777bb3f19bcafe2575ffb2a3e46af92509ae9594
+  subpackages:
+  - swagger
+  - log
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 2df174808ee097f90d259e432cc04442cf60be21
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: f390dcf405f7b83c997eac1b06768bb9f44dec18
+  subpackages:
+  - assert
