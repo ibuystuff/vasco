@@ -1,12 +1,10 @@
-package: github.com/achievementnetwork/vasco
+package: github.com/AchievementNetwork/vasco
 import:
 - package: github.com/AchievementNetwork/go-util
-  version: ~1.0.0
   subpackages:
   - util
 - package: github.com/AchievementNetwork/stringset
 - package: github.com/AchievementNetwork/vasco
-  version: ~0.16.11
   subpackages:
   - cache
   - registry
