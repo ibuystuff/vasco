@@ -11,7 +11,7 @@ import (
 	"github.com/AchievementNetwork/vasco/cache"
 )
 
-var v = NewVasco(cache.NewLocalCache())
+var v = NewVasco(cache.NewLocalCache(), "/static", "")
 
 func TestSimple(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

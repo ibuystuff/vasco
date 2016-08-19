@@ -477,6 +477,7 @@ func main() {
 	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
 	var staticPath string = getEnvWithDefault("STATIC_PATH", "")
 	var expectedServices string = getEnvWithDefault("EXPECTED_SERVICES", "")
+	var redisAddr string = getEnvWithDefault("REDIS_ADDR", "localhost:6379")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
@@ -488,7 +489,7 @@ func main() {
 	var v *Vasco
 	switch kindOfCache {
 	case "redis":
-		log.Fatal("The redis store is not yet implemented.")
+		v = NewVasco(cache.NewRedisCache(redisAddr), staticPath, expectedServices)
 	case "memory":
 		v = NewVasco(cache.NewLocalCache(), staticPath, expectedServices)
 	default:

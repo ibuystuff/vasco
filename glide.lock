@@ -1,22 +1,26 @@
 hash: 2287acd71124980ddbc560bb8256ef4268ae7ad64721d13b00eb16700900c7e9
-updated: 2016-08-18T15:30:26.549304213-04:00
+updated: 2016-08-19T08:37:14.90329962-04:00
 imports:
 - name: github.com/AchievementNetwork/go-util
-  version: 583c8a97bfc784149aa192d564cbc2e194a4af11
+  version: eec73120a82ab373a0f859e926161dc614e36f95
   subpackages:
   - util
 - name: github.com/AchievementNetwork/stringset
-  version: d4ea4c4c14bdfc47fd4b19fc88133ee01db8ca80
-- name: github.com/AchievementNetwork/vasco
-  version: 0b259d5add07a9dfc902d9e93a96e563a02cb2ef
-  subpackages:
-  - cache
-  - registry
+  version: 85e70f1a1394e441081377770ab4a8ce527bf547
 - name: github.com/emicklei/go-restful
   version: 777bb3f19bcafe2575ffb2a3e46af92509ae9594
   subpackages:
   - swagger
   - log
+- name: gopkg.in/bsm/ratelimit.v1
+  version: db14e161995a5177acef654cb0dd785e8ee8bc22
+- name: gopkg.in/redis.v3
+  version: b5e368500d0a508ef8f16e9c2d4025a8a46bcc29
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
 testImports:
 - name: github.com/davecgh/go-spew
   version: 2df174808ee097f90d259e432cc04442cf60be21
