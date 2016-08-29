@@ -1,5 +1,5 @@
 hash: 2287acd71124980ddbc560bb8256ef4268ae7ad64721d13b00eb16700900c7e9
-updated: 2016-08-19T08:37:14.90329962-04:00
+updated: 2016-08-29T16:10:59.810474543-04:00
 imports:
 - name: github.com/AchievementNetwork/go-util
   version: eec73120a82ab373a0f859e926161dc614e36f95
