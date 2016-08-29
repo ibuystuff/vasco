@@ -4,10 +4,6 @@ import:
   subpackages:
   - util
 - package: github.com/AchievementNetwork/stringset
-- package: github.com/AchievementNetwork/vasco
-  subpackages:
-  - cache
-  - registry
 - package: github.com/emicklei/go-restful
   version: ~1.2.0
   subpackages:
