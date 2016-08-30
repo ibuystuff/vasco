@@ -1,18 +1,18 @@
-#
-# Go container based on google/golang
-#
-FROM anet-base:latest
+FROM alpine
 
-WORKDIR /gopath/src/github.com/AchievementNetwork/vasco
-ADD . /gopath/src/github.com/AchievementNetwork/vasco
-# RUN go get go get github.com/kardianos/vendor
-# RUN go install vendor
-# RUN vendor
-RUN go get
-RUN go install github.com/AchievementNetwork/vasco
+ADD build/vasco /
 
-CMD []
-ENTRYPOINT ["/gopath/bin/vasco"]
-# Document that the service listens on 2 ports: 8080 and 8081.
-EXPOSE 8080 8081
+ENV VASCO_PROXY 8080
+ENV VASCO_REGISTRY 8081
+ENV VASCO_STATUS 8082
+ENV MINPORT 8100
+ENV MAXPORT 9900
+ENV STATIC_PATH ""
+ENV EXPECTED_SERVICES ""
+ENV REDIS_ADDR "localhost:6379"
+ENV DISCOVERY_EXPIRATION 3600
+ENV STATUS_TIME 60
 
+EXPOSE 8080 8081 8082
+
+ENTRYPOINT ["/vasco"]
