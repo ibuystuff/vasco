@@ -14,7 +14,7 @@ update:
 
 build:
 	go generate $(shell glide novendor)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/tagserver -ldflags "-X github.com/AchievementNetwork/go-util/vascoClient.SourceRevision=$(REVISION) -X github.com/AchievementNetwork/go-util/vascoClient.SourceDeployTag=$(VERSION)" .;
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/vasco -ldflags "-X github.com/AchievementNetwork/go-util/vascoClient.SourceRevision=$(REVISION) -X github.com/AchievementNetwork/go-util/vascoClient.SourceDeployTag=$(VERSION)" .;
 
 image: build
 	docker build -t achievementnetwork/vasco .
