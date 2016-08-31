@@ -1,0 +1,70 @@
+version: "2"
+
+services:
+  mongo:
+    image: mongo
+
+  redis:
+    image: redis
+
+  vasco:
+    image: achievementnetwork/vasco
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      - redis
+    entrypoint: /vasco -cache=redis
+
+  tag:
+    image: achievementnetwork/tagserver
+    depends_on:
+      - vasco
+      - mongo
+    environment:
+      - VASCO_ADDR=http://vasco:8081
+      - MONGO_URL=http://mongo
+      - TAGSERVER_PREFIX=tag
+
+  item:
+    image: achievementnetwork/tagserver
+    depends_on:
+      - vasco
+      - mongo
+    environment:
+      - VASCO_ADDR=http://vasco:8081
+      - MONGO_URL=http://mongo
+      - TAGSERVER_PREFIX=item
+
+  assess:
+    image: achievementnetwork/tagserver
+    depends_on:
+      - vasco
+      - mongo
+    environment:
+      - VASCO_ADDR=http://vasco:8081
+      - MONGO_URL=http://mongo
+      - TAGSERVER_PREFIX=assess
+
+  passage:
+    image: achievementnetwork/tagserver
+    depends_on:
+      - vasco
+      - mongo
+    environment:
+      - VASCO_ADDR=http://vasco:8081
+      - MONGO_URL=http://mongo
+      - TAGSERVER_PREFIX=passage
+
+  stdtag:
+    image: achievementnetwork/tagserver
+    depends_on:
+      - vasco
+      - mongo
+    environment:
+      - VASCO_ADDR=http://vasco:8081
+      - MONGO_URL=http://mongo
+      - TAGSERVER_PREFIX=stdtag
