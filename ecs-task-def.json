@@ -1,8 +1,8 @@
 {
   "containerDefinitions":[
     {
-      "name":"vasco",
-      "image":"619643613550.dkr.ecr.us-east-1.amazonaws.com/achievementnetwork/vasco",
+      "name":"<PROJECT_NAME>",
+      "image":"<ECR_REGISTRY>/<ORG>/<PROJECT_NAME>",
       "portMappings":[
         {
           "containerPort":8080,
@@ -34,6 +34,6 @@
       "memory":100
     }
 	],
-  "family":"vasco"
+  "family":"<ECS_TASK_FAMILY>"
 }
 
