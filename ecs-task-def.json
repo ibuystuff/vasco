@@ -1,0 +1,39 @@
+{
+  "containerDefinitions":[
+    {
+      "name":"vasco",
+      "image":"619643613550.dkr.ecr.us-east-1.amazonaws.com/achievementnetwork/vasco",
+      "portMappings":[
+        {
+          "containerPort":8080,
+          "hostPort":8080
+        },
+        {
+          "containerPort":8081,
+          "hostPort":8081
+        },
+        {
+          "containerPort":8082,
+          "hostPort":8082
+        }
+      ],
+      "environment":[
+        {
+          "name":"DISCOVERY_CONFIG",
+          "value":"{\"Env:DISCOVERY_EXPIRATION\": \"1800\", \"Env:STATUS_TIME\": \"600\"}"
+        },
+        {
+          "name":"STATIC_PATH",
+          "value":"/static"
+        },
+        {
+          "name":"USE_SWAGGER",
+          "value":"false"
+        }
+      ],
+      "memory":100
+    }
+	],
+  "family":"vasco"
+}
+
