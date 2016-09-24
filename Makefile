@@ -52,6 +52,9 @@ info:
 test:
 	go test -v -race $(shell glide novendor)
 
+install-deps:
+	glide install
+
 build:
 	go generate $(shell glide novendor)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/$(PROJECT_NAME) -ldflags "-X github.com/AchievementNetwork/go-util/vascoClient.SourceRevision=$(REVISION) -X github.com/AchievementNetwork/go-util/vascoClient.SourceDeployTag=$(VERSION)" .;

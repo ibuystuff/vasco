@@ -10,14 +10,13 @@ dependencies:
     - go get github.com/Masterminds/glide
     - sudo apt-get update; sudo apt-get install jq
   override:
-    - mkdir -p $PROJECT_PATH
-    - rsync -azC --delete ./ $PROJECT_PATH
+    - cp -R ./ $PROJECT_PATH
 
 test:
   pre:
-    - cd $PROJECT_PATH && glide install
+    - cd $PROJECT_PATH && make install-deps
   override:
-    - cd $PROJECT_PATH && go test -race -v $(glide novendor)
+    - cd $PROJECT_PATH && make test 
 
 deployment:
   prep:
