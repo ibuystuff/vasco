@@ -1,17 +1,36 @@
 machine:
-        environment:
-                IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
-                PROJECT_PATH: "$HOME/.go_workspace/src/$IMPORT_PATH"
+  environment:
+    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    PROJECT_PATH: "$HOME/.go_workspace/src/$IMPORT_PATH"
+  services:
+    - docker
 
 dependencies:
-        pre:
-                - go get github.com/Masterminds/glide
-        override:
-                - mkdir -p $PROJECT_PATH
-                - rsync -azC --delete ./ $PROJECT_PATH
+  pre:
+    - go get github.com/Masterminds/glide
+    - sudo apt-get update; sudo apt-get install jq
+  override:
+    - mkdir -p $PROJECT_PATH
+    - rsync -azC --delete ./ $PROJECT_PATH
 
 test:
-        pre:
-                - cd $PROJECT_PATH && glide install
-        override:
-                - cd $PROJECT_PATH && go test -race -v $(glide novendor)
+  pre:
+    - cd $PROJECT_PATH && glide install
+  override:
+    - cd $PROJECT_PATH && go test -race -v $(glide novendor)
+
+deployment:
+  prep:
+    branch: ecs-prep
+    commands:
+      - ECS_CLUSTER=at2dev make ecr-login
+      - ECS_CLUSTER=at2dev make ecr-image
+      - ECS_CLUSTER=at2dev make ecs-register-task-def
+      - ECS_CLUSTER=at2dev make ecs-deploy
+  dev:
+    branch: master
+    commands:
+      - ECS_CLUSTER=at2dev make ecr-login
+      - ECS_CLUSTER=at2dev make ecr-image
+      - ECS_CLUSTER=at2dev make ecs-register-task-def
+      - ECS_CLUSTER=at2dev make ecs-deploy

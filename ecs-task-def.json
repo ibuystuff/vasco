@@ -2,7 +2,7 @@
   "containerDefinitions":[
     {
       "name":"<PROJECT_NAME>",
-      "image":"<ECR_REGISTRY>/<ORG>/<PROJECT_NAME>",
+      "image":"<ECR_REGISTRY>/<ORG>/<PROJECT_NAME>:<REVISION>",
       "portMappings":[
         {
           "containerPort":8080,
