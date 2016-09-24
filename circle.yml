@@ -10,10 +10,11 @@ dependencies:
     - go get github.com/Masterminds/glide
     - sudo apt-get update; sudo apt-get install jq
   override:
-    - cp -R ./ $PROJECT_PATH
+    - go version
 
 test:
   pre:
+    - cp -R ./ $PROJECT_PATH
     - cd $PROJECT_PATH && make install-deps
   override:
     - cd $PROJECT_PATH && make test 
@@ -22,14 +23,14 @@ deployment:
   prep:
     branch: ecs-prep
     commands:
-      - ECS_CLUSTER=at2dev make ecr-login
-      - ECS_CLUSTER=at2dev make ecr-image
-      - ECS_CLUSTER=at2dev make ecs-register-task-def
-      - ECS_CLUSTER=at2dev make ecs-deploy
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecr-login
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecr-image
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecs-register-task-def
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecs-deploy
   dev:
     branch: master
     commands:
-      - ECS_CLUSTER=at2dev make ecr-login
-      - ECS_CLUSTER=at2dev make ecr-image
-      - ECS_CLUSTER=at2dev make ecs-register-task-def
-      - ECS_CLUSTER=at2dev make ecs-deploy
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecr-login
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecr-image
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecs-register-task-def
+      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecs-deploy
