@@ -13,18 +13,27 @@ ECR_REPO ?= $(ORG)/$(PROJECT_NAME)
 ECR_ENDPOINT=$(ECR_REGISTRY)/$(ECR_REPO)
 
 ECS_CLUSTER ?= default
-ECS_SERVICE ?= $(PROJECT_NAME)
 ECS_TASK_FAMILY ?= $(PROJECT_NAME)
 ECS_TASK_DEF_TEMPLATE = ecs-task-def.json
 ECS_TASK_DEF_FILE = $(PROJECT_NAME)-task-def.json
-ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
+ECS_SERVICE ?= $(PROJECT_NAME)
 ECS_SERVICE_COUNT ?= 2
+ECS_SERVICE_MAX_PERCENT ?= 100
+ECS_SERVICE_MIN_HEALTHY_PERCENT ?= 50
+ECS_SERVICE_DEF_TEMPLATE = ecs-service-def.json
+ECS_SERVICE_DEF_FILE = $(PROJECT_NAME)-service-def.json
+
+# TODO: Store information of deployed revisions in S3
+#ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
 
 MONGODB_URL ?= mongodb://localhost:27017
 VASCO_ADDR ?= http://vasco:8081
 
 .PHONY: default test info build
-.PHONY: ecr-login ecr-image ecr-task-def ecr-register-task-def ecr-update-service ecr-deploy
+.PHONY: ecr-login ecr-image
+.PHONY: ecs-task-def ecs-register-task-def
+.PHONY: ecs-create-service ecs-update-service
+.PHONY: ecs-deploy
 
 default: test
 
@@ -40,12 +49,16 @@ info:
 	@echo ECR_REPO=$(ECR_REPO)
 	@echo ECR_ENDPOINT=$(ECR_ENDPOINT)
 	@echo ECS_CLUSTER=$(ECS_CLUSTER)
-	@echo ECS_SERVICE=$(ECS_SERVICE)
 	@echo ECS_TASK_FAMILY=$(ECS_TASK_FAMILY)
 	@echo ECS_TASK_DEF_TEMPLATE=$(ECS_TASK_DEF_TEMPLATE)
 	@echo ECS_TASK_DEF_FILE=$(ECS_TASK_DEF_FILE)
 	@echo ECS_TASK_DEF_REV=$(ECS_TASK_DEF_REV)
+	@echo ECS_SERVICE=$(ECS_SERVICE)
 	@echo ECS_SERVICE_COUNT=$(ECS_SERVICE_COUNT)
+	@echo ECS_SERVICE_MAX_PERCENT=$(ECS_SERVICE_MAX_PERCENT)
+	@echo ECS_SERVICE_MIN_HEALTH_PERCENT=$(ECS_SERVICE_MIN_HEALTH_PERCENT)
+	@echo ECS_SERVICE_DEF_TEMPLATE=$(ECS_SERVICE_DEF_TEMPLATE)
+	@echo ECS_SERVICE_DEF_FILE=$(ECS_SERVICE_DEF_FILE)
 	@echo MONGODB_URL=$(MONGODB_URL)
 	@echo VASCO_ADDR=$(VASCO_ADDR)
 
@@ -57,7 +70,9 @@ install-deps:
 
 build:
 	go generate $(shell glide novendor)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/$(PROJECT_NAME) -ldflags "-X github.com/AchievementNetwork/go-util/vascoClient.SourceRevision=$(REVISION) -X github.com/AchievementNetwork/go-util/vascoClient.SourceDeployTag=$(VERSION)" .;
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/$(PROJECT_NAME) -ldflags \
+		"-X github.com/AchievementNetwork/go-util/vascoClient.SourceRevision=$(REVISION) \
+		-X github.com/AchievementNetwork/go-util/vascoClient.SourceDeployTag=$(VERSION)" .;
 
 ecr-login:
 	aws --version
@@ -70,8 +85,6 @@ ecr-image: build
 	docker tag $(ECR_REPO):$(REVISION) $(ECR_REGISTRY)/$(ECR_REPO):$(REVISION)
 	docker push $(ECR_ENDPOINT):$(REVISION)
 
-# Duplicate the template Task Definition and swap placeholders
-# for real values as defined in the variables above.
 ecs-task-def:
 	@cp $(ECS_TASK_DEF_TEMPLATE) $(ECS_TASK_DEF_FILE)
 	@sed -i.bak -e s,"<ORG>","$(ORG)",g $(PROJECT_NAME)-task-def.json
@@ -85,6 +98,21 @@ ecs-task-def:
 
 ecs-register-task-def: ecs-task-def
 	aws ecs register-task-definition --family $(ECS_TASK_FAMILY) --cli-input-json file://$(ECS_TASK_DEF_FILE) --output text
+	@rm $(PROJECT_NAME)-task-def.json
+
+ecs-service-def:
+	@cp $(ECS_SERVICE_DEF_TEMPLATE) $(ECS_SERVICE_DEF_FILE)
+	@sed -i.bak -e s,"<ECS_CLUSTER>","$(ECS_CLUSTER)",g $(PROJECT_NAME)-service-def.json
+	@sed -i.bak -e s,"<ECS_SERVICE>","$(ECS_SERVICE)",g $(PROJECT_NAME)-service-def.json
+	@sed -i.bak -e s,"<ECS_TASK_FAMILY>","$(ECS_TASK_FAMILY)",g $(PROJECT_NAME)-service-def.json
+	@sed -i.bak -e s,"<ECS_SERVICE_COUNT>","$(ECS_SERVICE_COUNT)",g $(PROJECT_NAME)-service-def.json
+	@sed -i.bak -e s,"<ECS_SERVICE_MAX_PERCENT>","$(ECS_SERVICE_MAX_PERCENT)",g $(PROJECT_NAME)-service-def.json
+	@sed -i.bak -e s,"<ECS_SERVICE_MIN_HEALTHY_PERCENT>","$(ECS_SERVICE_MIN_HEALTHY_PERCENT)",g $(PROJECT_NAME)-service-def.json
+	@rm $(PROJECT_NAME)-service-def.json.bak
+
+ecs-create-service: ecs-service-def
+	aws ecs create-service --cluster $(ECS_CLUSTER) --cli-input-json file://$(ECS_SERVICE_DEF_FILE) --output text
+	@rm $(PROJECT_NAME)-service-def.json
 
 ecs-update-service:
 ifndef ECS_TASK_DEF_REV
