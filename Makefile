@@ -121,7 +121,7 @@ endif
 		--service $(ECS_SERVICE) \
 		--task-definition $(ECS_TASK_FAMILY):$(ECS_TASK_DEF_REV) \
 		--desired-count $(ECS_SERVICE_COUNT) \
-		--deployment-configuration maximumPercent=$(ECS_SERVICE_MAX_PERCENT),minimumHealthyPercent=$(ECS_SERVICE_MIN_HEALTHY_PERCENT)
+		--deployment-configuration maximumPercent=$(ECS_SERVICE_MAX_PERCENT),minimumHealthyPercent=$(ECS_SERVICE_MIN_HEALTHY_PERCENT) \
 		--output text
 	
 # Uses default task and service configuration params that will
