@@ -26,7 +26,6 @@ ECS_SERVICE_DEF_FILE = $(PROJECT_NAME)-service-def.json
 # TODO: Store information of deployed revisions in S3
 #ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
 
-MONGODB_URL ?= mongodb://localhost:27017
 VASCO_ADDR ?= http://vasco:8081
 
 .PHONY: default test info build
@@ -59,7 +58,6 @@ info:
 	@echo ECS_SERVICE_MIN_HEALTH_PERCENT=$(ECS_SERVICE_MIN_HEALTH_PERCENT)
 	@echo ECS_SERVICE_DEF_TEMPLATE=$(ECS_SERVICE_DEF_TEMPLATE)
 	@echo ECS_SERVICE_DEF_FILE=$(ECS_SERVICE_DEF_FILE)
-	@echo MONGODB_URL=$(MONGODB_URL)
 	@echo VASCO_ADDR=$(VASCO_ADDR)
 
 test:
@@ -93,7 +91,6 @@ ecs-task-def:
 	@sed -i.bak -e s,"<ECR_REGISTRY>","$(ECR_REGISTRY)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<ECS_TASK_FAMILY>","$(ECS_TASK_FAMILY)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<VASCO_ADDR>","$(VASCO_ADDR)",g $(PROJECT_NAME)-task-def.json
-	@sed -i.bak -e s,"<MONGODB_URL>","$(MONGODB_URL)",g $(PROJECT_NAME)-task-def.json
 	@rm $(PROJECT_NAME)-task-def.json.bak
 
 ecs-register-task-def: ecs-task-def
