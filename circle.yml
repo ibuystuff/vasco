@@ -23,7 +23,6 @@ deployment:
   prep:
     branch: ecs-prep
     commands:
-      - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make info
       - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecr-login
       - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecr-image
       - cd $PROJECT_PATH && ECS_CLUSTER=at2staging make ecs-register-task-def
