@@ -23,6 +23,10 @@ ECS_SERVICE_MIN_HEALTHY_PERCENT ?= 50
 ECS_SERVICE_DEF_TEMPLATE = ecs-service-def.json
 ECS_SERVICE_DEF_FILE = $(PROJECT_NAME)-service-def.json
 
+AWS_LOG_GROUP = ecs-$(ECS_CLUSTER)
+AWS_LOG_REGION = $(AWS_DEFAULT_REGION)
+AWS_LOG_STREAM_PREFIX = $(ECS_SERVICE)
+
 # TODO: Store information of deployed revisions in S3
 #ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
 
@@ -44,6 +48,9 @@ info:
 	@echo VERSION=$(VERSION)
 	@echo AWS_DEFAULT_REGION=$(AWS_DEFAULT_REGION)
 	@echo AWS_ACCOUNT_ID=$(AWS_ACCOUNT_ID)
+	@echo AWS_LOG_GROUP=$(AWS_LOG_GROUP)
+	@echo AWS_LOG_REGION=$(AWS_LOG_REGION)
+	@echo AWS_LOG_STREAM_PREFIX=$(AWS_LOG_STREAM_PREFIX)
 	@echo ECR_REGISTRY=$(ECR_REGISTRY)
 	@echo ECR_REPO=$(ECR_REPO)
 	@echo ECR_ENDPOINT=$(ECR_ENDPOINT)
@@ -90,6 +97,9 @@ ecs-task-def:
 	@sed -i.bak -e s,"<REVISION>","$(REVISION)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<ECR_REGISTRY>","$(ECR_REGISTRY)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<ECS_TASK_FAMILY>","$(ECS_TASK_FAMILY)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<AWS_LOG_GROUP>","$(AWS_LOG_GROUP)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<AWS_LOG_REGION>","$(AWS_LOG_REGION)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<AWS_LOG_STREAM_PREFIX>","$(AWS_LOG_STREAM_PREFIX)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<VASCO_ADDR>","$(VASCO_ADDR)",g $(PROJECT_NAME)-task-def.json
 	@rm $(PROJECT_NAME)-task-def.json.bak
 

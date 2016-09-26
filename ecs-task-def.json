@@ -31,8 +31,16 @@
           "value":"false"
         }
       ],
-      "memory":100
-    }
+			"memory":100,
+			"logConfiguration": {
+				"logDriver": "awslogs",
+				"options": {
+					"awslogs-group": "<AWS_LOG_GROUP>",
+					"awslogs-region": "<AWS_LOG_REGION>",
+					"awslogs-stream-prefix": "<AWS_LOG_STREAM_PREFIX>"
+				}
+			}
+		}
 	],
   "family":"<ECS_TASK_FAMILY>"
 }
