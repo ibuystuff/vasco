@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -477,7 +478,7 @@ func main() {
 	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
 	var staticPath string = getEnvWithDefault("STATIC_PATH", "")
 	var expectedServices string = getEnvWithDefault("EXPECTED_SERVICES", "")
-	var redisAddr string = getEnvWithDefault("REDIS_ADDR", "localhost:6379")
+	var redisAddr string = getEnvWithDefault("REDIS_ADDR", "")
 
 	flag.StringVar(&registryPort, "registryport", registryPort, "The registry (management) port.")
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
@@ -485,6 +486,11 @@ func main() {
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
 	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
+
+	var err error
+	if _, err = url.Parse(redisAddr); err == nil {
+		kindOfCache = "redis"
+	}
 
 	var v *Vasco
 	switch kindOfCache {
@@ -496,7 +502,9 @@ func main() {
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
 
-	var err error
+	log.Printf("kindOfCache: %s", kindOfCache)
+	log.Printf("redisAddr: %s", redisAddr)
+
 	v.minPort, err = strconv.Atoi(minPort)
 	if err != nil {
 		panic("minport must be a number!")

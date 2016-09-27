@@ -106,6 +106,7 @@ ecs-task-def:
 ecs-register-task-def: ecs-task-def
 	aws ecs register-task-definition --family $(ECS_TASK_FAMILY) --cli-input-json file://$(ECS_TASK_DEF_FILE) --output text
 	@rm $(PROJECT_NAME)-task-def.json
+	aws ecs describe-task-definition --task-definition $(PROJECT_NAME) --output text
 
 ecs-service-def:
 	@cp $(ECS_SERVICE_DEF_TEMPLATE) $(ECS_SERVICE_DEF_FILE)
@@ -144,7 +145,6 @@ ecs-deploy:
 	ECS_SERVICE_COUNT=$(ECS_SERVICE_COUNT) \
 	ECS_SERVICE_MAX_PERCENT=$(ECS_SERVICE_MAX_PERCENT) \
 	ECS_SERVICE_MIN_HEALTHY_PERCENT=$(ECS_SERVICE_MIN_HEALTHY_PERCENT) \
-	REDIS_ADDR=$(REDIS_ADDR) \
 	REVISION=$(REVISION) \
 	$(MAKE) ecs-update-service
 
