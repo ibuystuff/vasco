@@ -490,6 +490,8 @@ func main() {
 	var err error
 	if _, err = url.Parse(redisAddr); err == nil {
 		kindOfCache = "redis"
+		log.Printf("kindOfCache: %s", kindOfCache)
+		log.Printf("redisAddr: %s", redisAddr)
 	}
 
 	var v *Vasco
@@ -501,9 +503,6 @@ func main() {
 	default:
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
-
-	log.Printf("kindOfCache: %s", kindOfCache)
-	log.Printf("redisAddr: %s", redisAddr)
 
 	v.minPort, err = strconv.Atoi(minPort)
 	if err != nil {
