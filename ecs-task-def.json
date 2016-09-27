@@ -17,18 +17,50 @@
           "hostPort":8082
         }
       ],
-      "environment":[
+      "environment":[ 
+				{
+					"name": "VASCO_PROXY",
+					"value": 8080
+				},
+				{
+					"name": "VASCO_REGISTRY",
+					"value": 8081
+				},
+				{
+					"name": "VASCO_STATUS",
+					"value": 8082
+				},
+				{
+					"name": "REDIS_ADDR",
+					"value": "<REDIS_ADDR>"
+				},
+				{
+					"name": "MINPORT",
+					"value": 8100
+				},
+				{
+					"name": "MAXPORT",
+					"value": 9900
+				},
+				{
+					"name": "EXPECTED_SERVICES",
+					"value": ""
+				},
+				{
+					"name": "STATUS_TIME",
+					"value": 60
+				},
         {
-          "name":"DISCOVERY_CONFIG",
-          "value":"{\"Env:DISCOVERY_EXPIRATION\": \"1800\", \"Env:STATUS_TIME\": \"600\"}"
+          "name":"DISCOVERY_EXPIRATION",
+          "value": 3600
         },
         {
           "name":"STATIC_PATH",
-          "value":"/static"
+          "value": ""
         },
         {
           "name":"USE_SWAGGER",
-          "value":"false"
+          "value": "false"
         }
       ],
 			"memory":100,

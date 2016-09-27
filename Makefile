@@ -30,7 +30,7 @@ AWS_LOG_STREAM_PREFIX = $(ECS_SERVICE)
 # TODO: Store information of deployed revisions in S3
 #ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
 
-VASCO_ADDR ?= http://vasco:8081
+REDIS_ADDR ?= localhost:6379
 
 .PHONY: default test info build
 .PHONY: ecr-login ecr-image
@@ -65,7 +65,7 @@ info:
 	@echo ECS_SERVICE_MIN_HEALTHY_PERCENT=$(ECS_SERVICE_MIN_HEALTHY_PERCENT)
 	@echo ECS_SERVICE_DEF_TEMPLATE=$(ECS_SERVICE_DEF_TEMPLATE)
 	@echo ECS_SERVICE_DEF_FILE=$(ECS_SERVICE_DEF_FILE)
-	@echo VASCO_ADDR=$(VASCO_ADDR)
+	@echo REDIS_ADDR=$(REDIS_ADDR)
 
 test:
 	go test -v -race $(shell glide novendor)
@@ -100,7 +100,7 @@ ecs-task-def:
 	@sed -i.bak -e s,"<AWS_LOG_GROUP>","$(AWS_LOG_GROUP)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<AWS_LOG_REGION>","$(AWS_LOG_REGION)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<AWS_LOG_STREAM_PREFIX>","$(AWS_LOG_STREAM_PREFIX)",g $(PROJECT_NAME)-task-def.json
-	@sed -i.bak -e s,"<VASCO_ADDR>","$(VASCO_ADDR)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<REDIS_ADDR>","$(REDIS_ADDR)",g $(PROJECT_NAME)-task-def.json
 	@rm $(PROJECT_NAME)-task-def.json.bak
 
 ecs-register-task-def: ecs-task-def
@@ -144,6 +144,7 @@ ecs-deploy:
 	ECS_SERVICE_COUNT=$(ECS_SERVICE_COUNT) \
 	ECS_SERVICE_MAX_PERCENT=$(ECS_SERVICE_MAX_PERCENT) \
 	ECS_SERVICE_MIN_HEALTHY_PERCENT=$(ECS_SERVICE_MIN_HEALTHY_PERCENT) \
+	REDIS_ADDR=$(REDIS_ADDR) \
 	REVISION=$(REVISION) \
 	$(MAKE) ecs-update-service
 
