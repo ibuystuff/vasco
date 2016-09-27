@@ -20,15 +20,15 @@
       "environment":[ 
 				{
 					"name": "VASCO_PROXY",
-					"value": 8080
+					"value": "8080"
 				},
 				{
 					"name": "VASCO_REGISTRY",
-					"value": 8081
+					"value": "8081"
 				},
 				{
 					"name": "VASCO_STATUS",
-					"value": 8082
+					"value": "8082"
 				},
 				{
 					"name": "REDIS_ADDR",
@@ -36,11 +36,11 @@
 				},
 				{
 					"name": "MINPORT",
-					"value": 8100
+					"value": "8100"
 				},
 				{
 					"name": "MAXPORT",
-					"value": 9900
+					"value": "9900"
 				},
 				{
 					"name": "EXPECTED_SERVICES",
@@ -48,11 +48,11 @@
 				},
 				{
 					"name": "STATUS_TIME",
-					"value": 60
+					"value": "60"
 				},
         {
           "name":"DISCOVERY_EXPIRATION",
-          "value": 3600
+          "value": "3600"
         },
         {
           "name":"STATIC_PATH",
