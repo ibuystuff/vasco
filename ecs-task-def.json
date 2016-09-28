@@ -44,7 +44,7 @@
 				},
 				{
 					"name": "EXPECTED_SERVICES",
-					"value": ""
+					"value": "config assess item passage pdf sas staticserver stdmirror stdtag user"
 				},
 				{
 					"name": "STATUS_TIME",
