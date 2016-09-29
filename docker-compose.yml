@@ -17,17 +17,7 @@ services:
       - "8082:8082"
     depends_on:
       - redis
-    entrypoint: /vasco -cache=redis
-
-  tag:
-    image: achievementnetwork/tagserver
-    depends_on:
-      - vasco
-      - mongo
-    environment:
-      - VASCO_ADDR=http://vasco:8081
-      - MONGO_URL=http://mongo
-      - TAGSERVER_PREFIX=tag
+    entrypoint: /vasco
 
   item:
     image: achievementnetwork/tagserver

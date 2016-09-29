@@ -30,6 +30,9 @@ AWS_LOG_STREAM_PREFIX = $(ECS_SERVICE)
 # TODO: Store information of deployed revisions in S3
 #ECS_TASK_DEF_REV_URI = anet-ecs-at2.s3.amazonaws.com/revisions/$(ECS_CLUSTER).$(PROJECT_NAME).current.txt
 
+VASCO_PROXY ?= 8080
+VASCO_REGISTRY ?= 8081
+VASCO_STATUS ?= 8082
 REDIS_ADDR ?= localhost:6379
 
 .PHONY: default test info build
@@ -65,6 +68,9 @@ info:
 	@echo ECS_SERVICE_MIN_HEALTHY_PERCENT=$(ECS_SERVICE_MIN_HEALTHY_PERCENT)
 	@echo ECS_SERVICE_DEF_TEMPLATE=$(ECS_SERVICE_DEF_TEMPLATE)
 	@echo ECS_SERVICE_DEF_FILE=$(ECS_SERVICE_DEF_FILE)
+	@echo VASCO_PROXY=$(VASCO_PROXY)
+	@echo VASCO_REGISTRY=$(VASCO_REGISTRY)
+	@echo VASCO_STATUS=$(VASCO_STATUS)
 	@echo REDIS_ADDR=$(REDIS_ADDR)
 
 test:
@@ -100,6 +106,9 @@ ecs-task-def:
 	@sed -i.bak -e s,"<AWS_LOG_GROUP>","$(AWS_LOG_GROUP)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<AWS_LOG_REGION>","$(AWS_LOG_REGION)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<AWS_LOG_STREAM_PREFIX>","$(AWS_LOG_STREAM_PREFIX)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<VASCO_PROXY>","$(VASCO_PROXY)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<VASCO_REGISTRY>","$(VASCO_REGISTRY)",g $(PROJECT_NAME)-task-def.json
+	@sed -i.bak -e s,"<VASCO_STATUS>","$(VASCO_STATUS)",g $(PROJECT_NAME)-task-def.json
 	@sed -i.bak -e s,"<REDIS_ADDR>","$(REDIS_ADDR)",g $(PROJECT_NAME)-task-def.json
 	@rm $(PROJECT_NAME)-task-def.json.bak
 

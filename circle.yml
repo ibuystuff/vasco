@@ -26,7 +26,7 @@ deployment:
       - cd $PROJECT_PATH && make ecr-login ECS_CLUSTER=at2staging
       - cd $PROJECT_PATH && make ecr-image ECS_CLUSTER=at2staging
       - cd $PROJECT_PATH && make ecs-register-task-def ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
-      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging ECS_SERVICE_COUNT=3 ECS_SERVICE_MIN_HEALTHY_PERCENT=33 REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging ECS_SERVICE_COUNT=3 ECS_SERVICE_MIN_HEALTHY_PERCENT=33
   dev:
     branch: master
     commands:
