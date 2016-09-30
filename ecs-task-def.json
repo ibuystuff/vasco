@@ -56,7 +56,7 @@
         },
         {
           "name":"STATIC_PATH",
-          "value": ""
+          "value": "/static"
         },
         {
           "name":"USE_SWAGGER",
