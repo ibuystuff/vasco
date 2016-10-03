@@ -25,14 +25,15 @@ type Status struct {
 }
 
 type Registration struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
-	Pattern string `json:"pattern"`
-	Weight  int    `json:"weight,omitempty"`
-	Stat    Status `json:"status,omitempty"`
-	hash    string
-	regex   *regexp.Regexp
-	url     *url.URL
+	Name     string `json:"name"`
+	Address  string `json:"address"`
+	Pattern  string `json:"pattern"`
+	Weight   int    `json:"weight,omitempty"`
+	Stat     Status `json:"status,omitempty"`
+	disabled bool
+	hash     string
+	regex    *regexp.Regexp
+	url      *url.URL
 }
 
 func NewRegFromJSON(j string) *Registration {
@@ -40,10 +41,9 @@ func NewRegFromJSON(j string) *Registration {
 	dec := json.NewDecoder(strings.NewReader(j))
 	if err := dec.Decode(reg); err != nil {
 		return nil
-	} else {
-		reg.SetDefaults()
-		return reg
 	}
+	reg.SetDefaults()
+	return reg
 }
 
 func Hash(a ...string) string {

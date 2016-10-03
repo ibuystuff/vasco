@@ -125,6 +125,10 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		if err != nil {
 			item["Error"] = fmt.Sprintf("GET from %s failed.", u.String())
 			item["StatusCode"] = http.StatusServiceUnavailable
+			if !reg.disabled {
+				reg.disabled = true
+				r.c.Set(reg.Hash(), reg.String())
+			}
 		} else {
 			body, err := ioutil.ReadAll(result.Body)
 			err = json.Unmarshal(body, &item)
@@ -132,10 +136,15 @@ func (r *Registry) DetailedStatus() StatusBlock {
 				item["StatusBody"] = string(body)
 			}
 			item["StatusCode"] = result.StatusCode
+			if reg.disabled {
+				reg.disabled = false
+				r.c.Set(reg.Hash(), reg.String())
+			}
 		}
 		item["Name"] = reg.Name
 		item["Address"] = reg.Address
 		item["Port"] = ""
+		item["disabled"] = reg.disabled
 		hs := strings.Split(u.Host, ":")
 		if len(hs) == 2 {
 			item["Port"] = hs[1]
@@ -224,7 +233,10 @@ func (r *Registry) getAllRegistrations() []*Registration {
 			removes = append(removes, hash)
 		} else {
 			reg := NewRegFromJSON(regtext)
-			results = append(results, reg)
+			// don't consider disabled registrations
+			if !reg.disabled {
+				results = append(results, reg)
+			}
 		}
 	}
 
