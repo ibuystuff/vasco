@@ -44,7 +44,7 @@
 				},
 				{
 					"name": "EXPECTED_SERVICES",
-					"value": "config assess item passage pdf sas staticserver stdmirror stdtag user assessapi"
+					"value": "config assess item passage pdf sas staticserver stdmirror stdtag user assessapi learnm"
 				},
 				{
 					"name": "STATUS_TIME",
