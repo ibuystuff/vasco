@@ -8,7 +8,7 @@ machine:
 dependencies:
   pre:
     - go get github.com/Masterminds/glide
-    - sudo apt-get update; sudo apt-get install jq
+    - go get github.com/AchievementNetwork/gotools/cmd/ecs
   override:
     - go version
 
@@ -20,17 +20,9 @@ test:
     - cd $PROJECT_PATH && make test 
 
 deployment:
-  prep:
+  staging:
     branch: ecs-prep
     commands:
-      - cd $PROJECT_PATH && make ecr-login ECS_CLUSTER=at2staging
       - cd $PROJECT_PATH && make ecr-image ECS_CLUSTER=at2staging
-      - cd $PROJECT_PATH && make ecs-register-task-def ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
-      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging ECS_SERVICE_COUNT=3 ECS_SERVICE_MIN_HEALTHY_PERCENT=33
-  dev:
-    branch: master
-    commands:
-      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecr-login
-      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecr-image
-      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecs-register-task-def
-      - cd $PROJECT_PATH && ECS_CLUSTER=at2dev make ecs-deploy
+      - cd $PROJECT_PATH && make ecs-register-task ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging 
