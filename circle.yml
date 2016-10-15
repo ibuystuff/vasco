@@ -23,6 +23,4 @@ deployment:
   staging:
     branch: ecs-prep
     commands:
-      - cd $PROJECT_PATH && make ecr-image ECS_CLUSTER=at2staging
-      - cd $PROJECT_PATH && make ecs-register-task ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
-      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging 
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
