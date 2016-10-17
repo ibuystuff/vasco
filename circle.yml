@@ -20,7 +20,15 @@ test:
     - cd $PROJECT_PATH && make test 
 
 deployment:
+  dev:
+    branch: master
+    commands:
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2dev REDIS_ADDR=at2dev.7bywcm.0001.use1.cache.amazonaws.com:6379
   staging:
-    branch: ecs-prep
+    tag: /v[0-9]+(\.[0-9]+)*(-staging)/
     commands:
       - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+  prod:
+    tag: /v[0-9]+(\.[0-9]+)*(-prod)/
+    commands:
+      - cd $PROJECT_PATH && make ecs-promote ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379

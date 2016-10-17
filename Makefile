@@ -26,7 +26,7 @@ ENVARS = VASCO_PROXY|$(VASCO_PROXY),VASCO_REGISTRY|$(VASCO_REGISTRY),VASCO_STATU
 .PHONY: default test build install-deps
 .PHONY: ecr-image ecs-register-task
 .PHONY: ecs-create-service ecs-update-service
-.PHONY: ecs-deploy
+.PHONY: ecs-deploy ecs-update-service
 
 default: test
 
@@ -66,3 +66,6 @@ ecs-register-task:
 
 ecs-deploy: ecr-image ecs-update-service
 	@echo "Deploy Complete"
+
+ecs-promote: ecs-update-service
+	@echo "Promotion Complete"
