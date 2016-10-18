@@ -63,6 +63,9 @@ ecs-register-task:
 		--port-mappings="$(VASCO_PROXY):$(VASCO_PROXY),$(VASCO_REGISTRY):$(VASCO_REGISTRY),$(VASCO_STATUS):$(VASCO_STATUS)" \
 		--ecs-task-memory=$(ECS_TASK_MEMORY) \
 		--envars="$(ENVARS)"
+ 
+ecs-first-deploy: ecr-image ecs-create-service
+	@echo "First Deploy Complete"
 
 ecs-deploy: ecr-image ecs-update-service
 	@echo "Deploy Complete"
