@@ -1,17 +1,34 @@
 machine:
-        environment:
-                IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
-                PROJECT_PATH: "$HOME/.go_workspace/src/$IMPORT_PATH"
+  environment:
+    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    PROJECT_PATH: "$HOME/.go_workspace/src/$IMPORT_PATH"
+  services:
+    - docker
 
 dependencies:
-        pre:
-                - go get github.com/Masterminds/glide
-        override:
-                - mkdir -p $PROJECT_PATH
-                - rsync -azC --delete ./ $PROJECT_PATH
+  pre:
+    - go get github.com/Masterminds/glide
+    - go get github.com/AchievementNetwork/gotools/cmd/ecs
+  override:
+    - go version
 
 test:
-        pre:
-                - cd $PROJECT_PATH && glide install
-        override:
-                - cd $PROJECT_PATH && go test -race -v $(glide novendor)
+  pre:
+    - cp -R ./ $PROJECT_PATH
+    - cd $PROJECT_PATH && make install-deps
+  override:
+    - cd $PROJECT_PATH && make test 
+
+deployment:
+  dev:
+    branch: master
+    commands:
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2dev REDIS_ADDR=at2dev.7bywcm.0001.use1.cache.amazonaws.com:6379
+  staging:
+    tag: /v[0-9]+(\.[0-9]+)*(-staging)/
+    commands:
+      - cd $PROJECT_PATH && make ecs-deploy ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+  prod:
+    tag: /v[0-9]+(\.[0-9]+)*(-prod)/
+    commands:
+      - cd $PROJECT_PATH && make ecs-promote ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379
