@@ -1,6 +1,7 @@
 REVISION ?= $(shell git rev-parse --short HEAD)
 BRANCH ?= $(shell git branch |sort |tail -1 |cut -c 3-)
 VERSION ?= "Branch:$(BRANCH)"
+DEPLOYTYPE ?= devel
 CONFIGVERSION ?= None
 
 PROJECT ?= $(shell basename $(CURDIR))
