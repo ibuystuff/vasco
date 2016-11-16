@@ -69,6 +69,3 @@ ecs-first-deploy: ecr-image ecs-create-service
 
 ecs-deploy: ecr-image ecs-update-service
 	@echo "Deploy Complete"
-
-ecs-promote: ecs-update-service
-	@echo "Promotion Complete"
