@@ -15,15 +15,20 @@ import (
 	"github.com/go-zoo/bone"
 )
 
+// whenever we know registration has changed, we want to update
+// the status system soon -- but since every update also requires
+// a bunch of http traffic, we don't want to hammer the servers during
+// startup, so we just do it "soon"; if multiple calls are received
+// during this timeout, the timer is reset.
 func (v *Vasco) refreshStatusSoon() {
-	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
+	v.statusTimer.Reset(5 * time.Second)
 }
 
 func (v *Vasco) register(rw http.ResponseWriter, req *http.Request) {
 	v.refreshStatusSoon()
-	var reg registry.Registration
+	var reg = new(registry.Registration)
 	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&reg)
+	err := dec.Decode(reg)
 	if err != nil {
 		log.Println("Couldn't read registration request: ", err.Error())
 		util.WriteNewWebError(rw, http.StatusBadRequest, "VAS-100", err.Error())
@@ -34,9 +39,14 @@ func (v *Vasco) register(rw http.ResponseWriter, req *http.Request) {
 		util.WriteNewWebError(rw, http.StatusBadRequest, "VAS-101", err.Error())
 		return
 	}
-	hash := v.registry.Register(&reg, true)
-
+	hash := v.registry.Register(reg, true)
 	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
+
+	r2 := v.registry.Find(hash)
+	if r2 == nil {
+		log.Printf("Unable to find the hash we just registered!")
+	}
+
 	util.WriteJSON(rw, hash)
 }
 
@@ -44,7 +54,7 @@ func (v *Vasco) refresh(rw http.ResponseWriter, req *http.Request) {
 	hash := bone.GetValue(req, "hash")
 	reg := v.registry.Find(hash)
 	if reg == nil {
-		log.Printf("FAILED: Refresh call for %s\n", hash)
+		log.Printf("FAILED: Refresh call for '%s'\n", hash)
 		util.WriteNewWebError(rw, http.StatusNotFound, "VAS-102", "No registration found for that hash.")
 		return
 	}
@@ -88,7 +98,7 @@ func (v *Vasco) statusGeneral(rw http.ResponseWriter, req *http.Request) {
 const sumfmt = "%7s %6s %26s  %s\n"
 
 func (v *Vasco) statusSummary(rw http.ResponseWriter, req *http.Request) {
-	summary := fmt.Sprintf(sumfmt, "State", "Code", "Ver", "Name")
+	fmt.Fprintf(rw, sumfmt, "State", "Code", "Ver", "Name")
 	for _, v := range v.lastStatus {
 		stat := v["StatusCode"]
 		name := v["Name"]
@@ -100,10 +110,9 @@ func (v *Vasco) statusSummary(rw http.ResponseWriter, req *http.Request) {
 		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
 			state = "NOT OK"
 		}
-		summary += fmt.Sprintf(sumfmt, state, strconv.FormatInt(int64(stat.(int)), 10), tag, name)
+		fmt.Fprintf(rw, sumfmt, state, strconv.FormatInt(int64(stat.(int)), 10), tag, name)
 	}
 
-	util.WriteJSON(rw, summary)
 	v.refreshStatusSoon()
 }
 
@@ -119,22 +128,8 @@ func (v *Vasco) statusOptions(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (v *Vasco) registerConfig(port string) {
-	reg := registry.Registration{
-		Name:    "config",
-		Address: fmt.Sprintf("http://localhost:%s", port),
-		Pattern: "/config/",
-		Stat:    registry.Status{Path: "/status"},
-	}
-
-	if err := reg.SetDefaults(); err != nil {
-		log.Println("Error creating self-referencing config registration: ", err)
-	}
-	v.registry.Register(&reg, false)
-}
-
 func (v *Vasco) statusDetail(rw http.ResponseWriter, req *http.Request) {
-	util.WriteJSON(rw, v.lastStatus)
+	util.WriteJSONPretty(rw, v.lastStatus)
 	v.refreshStatusSoon()
 }
 

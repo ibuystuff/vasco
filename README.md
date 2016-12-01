@@ -149,7 +149,7 @@ _**Writes:**_
 ---
 ## refresh
 
-### `PUT /register/{hash}`
+### `PUT /register/:hash`
 
 _refresh an existing registration object (I'm still here)_
 
@@ -174,7 +174,7 @@ Name | Kind | Description | DataType
 ---
 ## unregister
 
-### `DELETE /register/{hash}`
+### `DELETE /register/:hash`
 
 _delete a registration._
 

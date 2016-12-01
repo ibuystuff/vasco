@@ -35,9 +35,14 @@ var servers = []server{
 
 func TestMain(m *testing.M) {
 	// always starts wiped clean
-	c = cache.NewLocalCache()
+	if os.Getenv("TEST_REDIS") != "" {
+		c = cache.NewRedisCache("localhost:6379")
+	} else {
+		c = cache.NewLocalCache()
+	}
+
 	defer c.Close()
-	r = NewRegistry(c, "/tmp", "")
+	r = NewRegistry(c, "/tmp", "", 60)
 
 	memResult := m.Run()
 

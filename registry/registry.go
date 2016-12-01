@@ -96,6 +96,7 @@ func (r *Registry) Register(reg *Registration, expire bool) string {
 func (r *Registry) Find(hash string) *Registration {
 	regtext, err := r.c.Get(hash)
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
 	reg := NewRegFromJSON(regtext)

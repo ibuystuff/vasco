@@ -28,7 +28,7 @@ import (
 // Vasco is a struct that manages the collection of data
 type Vasco struct {
 	cache          cache.Cache
-	registry       registry.Registry
+	registry       *registry.Registry
 	lastStatus     registry.StatusBlock
 	statusTimer    *time.Timer
 	allowedMethods []string
@@ -42,7 +42,7 @@ func NewVasco(c cache.Cache, staticPath string, expected string) *Vasco {
 	r := registry.NewRegistry(c, staticPath, expected, timeout)
 	return &Vasco{
 		cache:    c,
-		registry: *r,
+		registry: r,
 		// if these ever need to vary based on the deploy it would be better if
 		// they came from the environment. But right now it doesn't seem necessary.
 		allowedOrigins: []string{"*"},
@@ -59,6 +59,14 @@ func NewVasco(c cache.Cache, staticPath string, expected string) *Vasco {
 			"Content-Disposition",
 			"Content-Description",
 		},
+	}
+}
+
+// logit is middleware to log requests
+func logit(handler http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		log.Printf("%s %s\n", req.Method, req.URL)
+		handler(rw, req)
 	}
 }
 
@@ -161,7 +169,7 @@ func (v *Vasco) CreateRegistryService() *bone.Mux {
 
 		`)
 
-	svc.Route(svc.POST("/register").To(v.register).
+	svc.Route(svc.POST("/register").To(logit(v.register)).
 		Doc("create a registration object and return its hash").
 		Operation("register").
 		Consumes("application/json").
@@ -169,19 +177,19 @@ func (v *Vasco) CreateRegistryService() *bone.Mux {
 		Reads(registry.Registration{}).
 		Writes(""))
 
-	svc.Route(svc.PUT("/register/{hash}").To(v.refresh).
+	svc.Route(svc.PUT("/register/:hash").To(logit(v.refresh)).
 		Doc("refresh an existing registration object (I'm still here)").
 		Operation("refresh").
 		Param(boneful.PathParameter("hash", "the hash returned by the registration").DataType("string")).
 		Reads(registry.Registration{}))
 
-	svc.Route(svc.DELETE("/register/{hash}").To(v.unregister).
+	svc.Route(svc.DELETE("/register/:hash").To(logit(v.unregister)).
 		Doc("delete a registration.").
 		Operation("unregister").
 		Param(boneful.PathParameter("hash", "the hash returned by the registration").DataType("string")).
 		Returns(http.StatusNotFound, "Key not found", nil))
 
-	svc.Route(svc.GET("/register/test").To(v.testRegistration).
+	svc.Route(svc.GET("/register/test").To(logit(v.testRegistration)).
 		Doc("Returns the result of the load balancer (where the LB would resolve to this time -- repeating this request may return a different result.)").
 		Operation("testRegistration").
 		Param(boneful.QueryParameter("url", "the url to test").DataType("string").Required(true)).
@@ -304,7 +312,7 @@ func main() {
 	flag.Parse()
 
 	var err error
-	if _, err = url.Parse(redisAddr); err == nil {
+	if _, err = url.Parse(redisAddr); redisAddr != "" && err == nil {
 		kindOfCache = "redis"
 		log.Printf("kindOfCache: %s", kindOfCache)
 		log.Printf("redisAddr: %s", redisAddr)
@@ -339,8 +347,6 @@ func main() {
 	log.Printf("registry listening on port %s", registryPort)
 	server := &http.Server{Addr: ":" + registryPort, Handler: registryMux}
 	go LandS(server, serverErrors)
-
-	v.registerConfig(registryPort)
 
 	err = <-serverErrors
 	log.Fatal(err)
