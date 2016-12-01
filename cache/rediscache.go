@@ -16,6 +16,19 @@ func NewRedisCache(addr string) *RedisCache {
 	c := RedisCache{
 		R: redis.NewClient(&redis.Options{Addr: addr}),
 	}
+	if c.R == nil {
+		panic("Unable to open redis client - can't continue.")
+	}
+	if err := c.R.Set("VASCO_START", "test", 0).Err(); err != nil {
+		panic("Failed to set a value in redis:" + err.Error())
+	}
+	if err := c.R.Get("VASCO_START").Err(); err != nil {
+		panic("Failed to get a value from redis:" + err.Error())
+	}
+	if err := c.R.Del("VASCO_START").Err(); err != nil {
+		panic("Failed to delete a value from redis:" + err.Error())
+	}
+
 	return &c
 }
 
