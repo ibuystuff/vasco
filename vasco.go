@@ -3,16 +3,13 @@
  * Original author: Kent Quirk
  * Created: 12 June 2015
  * Description: Discovery server for The Achievement Network
- * Copyright 2015 The Achievement Network. All rights reserved.
+ * Copyright 2015, 2016 The Achievement Network. All rights reserved.
  */
 
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -22,72 +19,55 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AchievementNetwork/go-util/util"
+	"github.com/AchievementNetwork/go-util/boneful"
 	"github.com/AchievementNetwork/vasco/cache"
 	"github.com/AchievementNetwork/vasco/registry"
-	"github.com/emicklei/go-restful"
-	"github.com/emicklei/go-restful/swagger"
+	"github.com/go-zoo/bone"
 )
-
-// SourceRevision is set during the build process so that status can report it
-var SourceRevision = "Not set"
-
-// SourceDeployTag is set during the build process so that status can report it
-var SourceDeployTag = "Not set"
 
 // Vasco is a struct that manages the collection of data
 type Vasco struct {
-	cache       cache.Cache
-	registry    registry.Registry
-	lastStatus  registry.StatusBlock
-	statusTimer *time.Timer
-	minPort     int
-	maxPort     int
-	curPort     int
+	cache          cache.Cache
+	registry       *registry.Registry
+	lastStatus     registry.StatusBlock
+	statusTimer    *time.Timer
+	allowedMethods []string
+	allowedHeaders []string
+	allowedOrigins []string
 }
 
 func NewVasco(c cache.Cache, staticPath string, expected string) *Vasco {
-	r := registry.NewRegistry(c, staticPath, expected)
-	return &Vasco{cache: c, registry: *r}
+	stimeout := getEnvWithDefault("DISCOVERY_EXPIRATION", "3600")
+	timeout, _ := strconv.Atoi(stimeout)
+	r := registry.NewRegistry(c, staticPath, expected, timeout)
+	return &Vasco{
+		cache:    c,
+		registry: r,
+		// if these ever need to vary based on the deploy it would be better if
+		// they came from the environment. But right now it doesn't seem necessary.
+		allowedOrigins: []string{"*"},
+		allowedMethods: []string{"POST", "GET", "DELETE", "PUT", "OPTIONS"},
+		allowedHeaders: []string{
+			"X-ANET-TOKEN",
+			"X-ACCESS_TOKEN",
+			"Access-Control-Allow-Origin",
+			"Authorization",
+			"Origin",
+			"x-requested-with",
+			"Content-Type",
+			"Content-Range",
+			"Content-Disposition",
+			"Content-Description",
+		},
+	}
 }
 
-func makeConfigService(path string, v *Vasco) *restful.WebService {
-	svc := new(restful.WebService)
-	svc.
-		Path(path).
-		Doc("Manage a key/value store for config values").
-		Consumes(restful.MIME_JSON, "text/plain").
-		Produces(restful.MIME_JSON, "text/plain") // you can specify this per route as well
-
-	svc.Route(svc.PUT("/{key}/{value}").To(v.createKey).
-		Doc("create a key with an initial value").
-		Operation("createKey").
-		Param(svc.PathParameter("key", "key to identify this Entry").DataType("string").Required(true)).
-		Param(svc.PathParameter("value", "any string").DataType("string").Required(true)))
-
-	svc.Route(svc.GET("/{key}").To(v.findKey).
-		Doc("get the contents of a key").
-		Operation("findKey").
-		Param(svc.PathParameter("key", "the key to fetch").DataType("string")).
-		Returns(http.StatusNotFound, "Key not found", nil))
-
-	svc.Route(svc.DELETE("/{key}").To(v.removeKey).
-		Doc("delete a key and its tag string.").
-		Operation("removeKey").
-		Param(svc.PathParameter("key", "the key to delete").DataType("string")).
-		Returns(http.StatusNotFound, "Key not found", nil))
-
-	svc.Route(svc.GET("/status").To(v.configStatus).
-		Doc("check server status").
-		Operation("configStatus"))
-
-	svc.Route(svc.GET("/port").To(v.requestPort).
-		Doc("returns a new port identifier that is not currently in use").
-		Operation("requestPort").
-		Writes(0))
-
-	return svc
-
+// logit is middleware to log requests
+func logit(handler http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		log.Printf("%s %s\n", req.Method, req.URL)
+		handler(rw, req)
+	}
 }
 
 // /register goes to discovery server locally
@@ -100,335 +80,186 @@ func makeConfigService(path string, v *Vasco) *restful.WebService {
 //     DELETE /register/myAddr
 //         Removes the IP and all its children
 
-func makeRegisterService(path string, v *Vasco) *restful.WebService {
-	svc := new(restful.WebService)
-	svc.
-		Path(path).
-		Doc("Manage the registration service")
+func (v *Vasco) CreateRegistryService() *bone.Mux {
+	svc := new(boneful.Service).
+		Path("/").
+		Doc(`This is ANet's discovery server, named after Vasco de Gama, who was
+			a Portugese explorer who found the first navigable water route from
+			Europe to India, opening up an age of trade.
 
-	svc.Route(svc.POST("").To(v.register).
+			The purpose of the server is to provide discovery services and
+			routing to a collection of other servers, allowing services to by
+			found by each other and their clients without needing to know very
+			much. It acts as a load balancer as well.
+
+			This system was designed by following the premise that the goal of
+			server operations is to reduce the number of places with a list of
+			machines to as close to zero as possible. It supports the idea of
+			either setting up configuration at the same time as the services, or
+			of allowing services to register themselves.
+
+			Once services are registered, Vasco then acts as a reverse proxy and
+			load balancer -- queries to the "public" port are directed to the
+			appropriate server behind the firewall by looking at the request and
+			distributing it appropriately. Vasco supports multiple instances of
+			a given pattern and can load balance using a weighted random
+			probability.
+
+
+		## Design
+
+		* Vasco supports two ports -- one is intended to be public, one is intended to be private (behind the firewall).
+		* The private port has a DNS name that is visible behind the firewall. Let's call it "vasco.anet.io".
+		* When a server wakes up, it contacts vasco.anet.io and says "Hi, my name is 'user' and I respond to queries that match the pattern "/user/".
+		* Servers must maintain connectivity. Vasco periodically makes status queries and aggregates the responses on its own status port.
+		* Client servers must include in their registration packets the mechanism for making status queries.
+		* Servers must also maintain connectivity by pinging the vasco refresh endpoint. If a server fails to do this, after the timeout it will be unregistered.
+		* The default vasco client will force re-registration on a SIGHUP, and also keeps connectivity alive with the refresh prompt.
+		* Vasco receives queries and reverse-proxies them to the servers.
+
+		## Registration
+		Registration is a JSON object that supports the following fields:
+
+		### name
+
+		An arbitrary name string that is used in status reporting.
+
+		### address
+
+	    The HTTP scheme and host (IP/port combination) used for forwarding requests
+
+		### pattern
+
+	    A regex match for the path starting at the leading slash.
+	    Note that the use of a regex implies that you need to be careful about the trailing
+	    elements of your pattern. If you mean "/tags/" you have to say "/tags/" not "/tags".
+
+	    If the regex includes parentheses for part of the pattern, the redirected request is made with only the parenthesized part of the query.
+	    Example:
+	        { "pattern": "/foo/" } -- server/foo/bar redirects to myAddr/foo/bar
+	        { "pattern": "/foo(/.*)" } -- server/foo/bar redirects to myAddr/bar
+
+	    Requests are matched against all outstanding patterns with a status of "up" or "failing" -- the pattern with the longest successful unparenthesized match is used to redirect the request. If multiple matching patterns have the same length, the strategy field is used to decide which match is used.
+
+	    If a forwarded request times out, the server is immediately marked with a status of "down".
+
+		### weight
+
+	    When multiple possible paths are matched (usually because there are multiple machines handling a given path), Vasco chooses between them using a weighted random selection.
+
+	    Default 100 if not specified. Distributes load randomly to services based on the fraction of the total of all services that matched the query. So if two services match with values of 100 and 50, the first will get 2/3 of the traffic. This is evaluated on every query so it's possible to start a service with a low number for testing and then raise it.
+
+		### status
+
+    	A JSON object specifying the status behavior:
+
+	    ### path
+
+        The path to be used to check status of the server (this path is concatenated with the address field to build a status query). Status is checked every N seconds, where N is defined in the Vasco configuration. A 200 reply means the server is up and functioning. A payload may be delivered with more detailed status information. It is returned as part of the discover server's status block (if it successfully parses as a JSON object, it is delivered that way, otherwise as a string). This must be specified.
+
+
+		### Example
+
+	    Simplest usage:
+
+	        PUT discoveryserver/register/my.address?pattern=/foo
+
+	        That will forward everything to discoveryserver/foo to my.address/foo
+
+
+		`)
+
+	svc.Route(svc.POST("/register").To(logit(v.register)).
 		Doc("create a registration object and return its hash").
 		Operation("register").
-		Consumes(restful.MIME_JSON).
-		Produces(restful.MIME_JSON).
+		Consumes("application/json").
+		Produces("application/json").
 		Reads(registry.Registration{}).
 		Writes(""))
 
-	svc.Route(svc.PUT("/{hash}").To(v.refresh).
+	svc.Route(svc.PUT("/register/:hash").To(logit(v.refresh)).
 		Doc("refresh an existing registration object (I'm still here)").
 		Operation("refresh").
-		Param(svc.PathParameter("hash", "the hash returned by the registration").DataType("string")).
+		Param(boneful.PathParameter("hash", "the hash returned by the registration").DataType("string")).
 		Reads(registry.Registration{}))
 
-	svc.Route(svc.DELETE("/{hash}").To(v.unregister).
+	svc.Route(svc.DELETE("/register/:hash").To(logit(v.unregister)).
 		Doc("delete a registration.").
 		Operation("unregister").
-		Param(svc.PathParameter("hash", "the hash returned by the registration").DataType("string")).
+		Param(boneful.PathParameter("hash", "the hash returned by the registration").DataType("string")).
 		Returns(http.StatusNotFound, "Key not found", nil))
 
-	svc.Route(svc.GET("/test").To(v.testRegistration).
+	svc.Route(svc.GET("/register/test").To(logit(v.testRegistration)).
 		Doc("Returns the result of the load balancer (where the LB would resolve to this time -- repeating this request may return a different result.)").
 		Operation("testRegistration").
-		Param(svc.QueryParameter("url", "the url to test").DataType("string").Required(true)).
-		Produces(restful.MIME_JSON).
+		Param(boneful.QueryParameter("url", "the url to test").DataType("string").Required(true)).
+		Produces("application/json").
 		Returns(http.StatusNotFound, "No matching url found", nil).
 		Writes(registry.Registration{}))
 
-	svc.Route(svc.GET("/whoami").To(v.whoami).
-		Doc("Responds with the caller's address").
-		Produces(restful.MIME_JSON).
-		Operation("whoami"))
-
-	return svc
+	return svc.Mux()
 
 }
 
-func makeStatusService(path string, v *Vasco) *restful.WebService {
-	svc := new(restful.WebService)
-	svc.
-		Path(path).
-		Consumes(restful.MIME_JSON, "text/plain").
-		Doc("Reports aggregated status statistics.")
+func (v *Vasco) CreateStatusService() *bone.Mux {
+	svc := new(boneful.Service).
+		Path("/").
+		Doc("The status portion of Vasco reports aggregated status statistics.")
 
-	svc.Route(svc.GET("").To(v.statusGeneral).
+	svc.Route(svc.OPTIONS("/status").To(v.statusOptions).
+		Doc("Responds to OPTIONS requests to handle CORS.").
+		Operation("statusOptions"))
+
+	svc.Route(svc.GET("/status").To(v.statusGeneral).
 		Doc("Generates aggregated status information.").
-		Produces(restful.MIME_JSON).
-		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusGeneral"))
 
-	svc.Route(svc.GET("/detail").To(v.statusDetail).
+	svc.Route(svc.GET("/status/detail").To(v.statusDetail).
 		Doc("Generates detailed status information.").
-		Produces(restful.MIME_JSON).
-		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Produces("application/json").
+		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusDetail").
-		Writes(registry.StatusBlock{}))
+		Writes(registry.StatusBlock{registry.StatusItem{
+			"Address":       "http://192.168.1.181:9023",
+			"Name":          "assess",
+			"StatusCode":    200,
+			"configtype":    "devel",
+			"configversion": "None",
+			"deploytag":     "Branch:master",
+			"revision":      "b1b171d",
+			"uptime":        "21h18m0.252103556s",
+		}}))
 
-	svc.Route(svc.GET("/summary").To(v.statusSummary).
+	svc.Route(svc.GET("/status/summary").To(v.statusSummary).
 		Doc("Generates summarized status information.").
 		Produces("text/plain").
-		Returns(http.StatusInternalServerError, "At least some servers are down.", nil).
+		Writes("  State   Code                        Ver  Name").
+		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusSummary"))
 
-	return svc
-}
-
-func (v *Vasco) RegisterContainer(container *restful.Container) {
-	container.Add(makeConfigService("/config", v))
-	container.Add(makeRegisterService("/register", v))
-	container.Add(makeStatusService("/status", v))
-}
-
-func (v *Vasco) RegisterStatusContainer(container *restful.Container) {
-	container.Add(makeStatusService("/status", v))
-}
-
-func (v *Vasco) PreloadFromEnvironment(envname string) {
-	e := os.Getenv(envname)
-	if e == "" {
-		return
-	}
-
-	type Env map[string]string
-	var env Env
-	dec := json.NewDecoder(strings.NewReader(e))
-	if err := dec.Decode(&env); err != nil {
-		log.Fatal(err)
-	}
-
-	v.PreloadFromMap(env)
-}
-
-func (v *Vasco) PreloadFromMap(m map[string]string) {
-	for k, val := range m {
-		log.Printf("cache setting '%s' to '%s'", k, val)
-		v.cache.Set(k, val)
-	}
-}
-
-// helper function to write a standard error response
-func writeError(response *restful.Response, code int, err error) {
-	response.AddHeader("Content-Type", "text/plain")
-	response.WriteErrorString(code, err.Error())
-}
-
-func (v *Vasco) createKey(request *restful.Request, response *restful.Response) {
-	key := request.PathParameter("key")
-	value := request.PathParameter("value")
-
-	if err := v.cache.Set(key, value); err != nil {
-		writeError(response, http.StatusInternalServerError, err)
-	} else {
-		response.WriteHeader(http.StatusCreated)
-	}
-}
-
-func (v *Vasco) findKey(request *restful.Request, response *restful.Response) {
-	key := request.PathParameter("key")
-	if value, err := v.cache.Get(key); err != nil {
-		writeError(response, http.StatusNotFound, err)
-	} else {
-		response.WriteEntity(value)
-	}
-}
-
-func (v *Vasco) removeKey(request *restful.Request, response *restful.Response) {
-	key := request.PathParameter("key")
-	if err := v.cache.Delete(key); err != nil {
-		writeError(response, http.StatusNotFound, err)
-	}
-}
-
-func (v *Vasco) configStatus(request *restful.Request, response *restful.Response) {
-	// this just returns 200
-}
-
-func (v *Vasco) requestPort(request *restful.Request, response *restful.Response) {
-	allports := make(map[string]bool)
-	for _, item := range v.lastStatus {
-		port := item["Port"].(string)
-		allports[port] = true
-	}
-
-	var p string
-	for {
-		p = fmt.Sprintf("%d", v.curPort)
-		v.curPort++
-		if v.curPort > v.maxPort {
-			v.curPort = v.minPort
-		}
-		if allports[p] == false {
-			break
-		}
-		log.Printf("Port %s is in use, skipped.", p)
-	}
-
-	response.WriteEntity(p)
-}
-
-func (v *Vasco) refreshStatusSoon() {
-	v.statusTimer.Reset(5 * time.Second) // whenever we register a new server, get status soon after
-}
-
-func (v *Vasco) register(request *restful.Request, response *restful.Response) {
-	v.refreshStatusSoon()
-	reg := new(registry.Registration)
-	if err := request.ReadEntity(reg); err != nil {
-		log.Printf("Couldn't read registration request: ", err.Error())
-		writeError(response, http.StatusForbidden, err)
-		return
-	}
-	if err := reg.SetDefaults(); err != nil {
-		log.Printf("Couldn't set defaults: ", err.Error())
-		writeError(response, http.StatusForbidden, err)
-		return
-	}
-	hash := v.registry.Register(reg, true)
-
-	log.Printf("Registered %s %s as %s \n", reg.Name, reg.Address, hash)
-	response.WriteEntity(hash)
-}
-
-func (v *Vasco) refresh(request *restful.Request, response *restful.Response) {
-	hash := request.PathParameter("hash")
-	reg := v.registry.Find(hash)
-	if reg == nil {
-		log.Printf("FAILED: Refresh call for %s\n", hash)
-		writeError(response, 404, errors.New("No registration found for that hash."))
-		return
-	}
-	v.registry.Refresh(reg)
-	v.refreshStatusSoon()
-	log.Printf("Refreshing %s %s\n", reg.Name, reg.Address)
-}
-
-func (v *Vasco) testRegistration(request *restful.Request, response *restful.Response) {
-	// to match, we fetch the list of patterns, mat
-	url := request.QueryParameter("url")
-	if url == "" {
-		writeError(response, http.StatusNotFound, errors.New("url query parameter required"))
-		return
-	}
-	match, err := v.registry.FindBestMatch(url)
-	if err != nil {
-		writeError(response, http.StatusNotFound, err)
-		return
-	}
-	response.WriteEntity(match)
-	response.WriteHeader(http.StatusOK)
-}
-
-func (v *Vasco) whoami(request *restful.Request, response *restful.Response) {
-	response.WriteEntity(request.Request.RemoteAddr)
-}
-
-func (v *Vasco) unregister(request *restful.Request, response *restful.Response) {
-	hash := request.PathParameter("hash")
-	v.registry.Unregister(v.registry.Find(hash))
-	log.Printf("Unregistered %s\n", hash)
-	v.refreshStatusSoon()
-}
-
-func (v *Vasco) statusGeneral(request *restful.Request, response *restful.Response) {
-	for _, v := range v.lastStatus {
-		stat := v["StatusCode"]
-		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
-			log.Printf("Status problem %d on %s", stat, v["Name"])
-		}
-	}
-}
-
-const sumfmt = "%7s %6s %26s  %s\n"
-
-func (v *Vasco) statusSummary(request *restful.Request, response *restful.Response) {
-	ok := true
-	summary := fmt.Sprintf(sumfmt, "State", "Code", "Ver", "Name")
-	for _, v := range v.lastStatus {
-		stat := v["StatusCode"]
-		name := v["Name"]
-		tag := v["deploytag"]
-		if tag == nil || tag == "" {
-			tag = "unknown"
-		}
-		state := "ok"
-		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
-			state = "NOT OK"
-			ok = false
-		}
-		summary += fmt.Sprintf(sumfmt, state, strconv.FormatInt(int64(stat.(int)), 10), tag, name)
-	}
-
-	if !ok {
-		writeError(response, 500, errors.New(summary))
-	} else {
-		response.Write([]byte(summary))
-	}
-	v.refreshStatusSoon()
-}
-
-func (v *Vasco) registerConfig(port string) {
-	reg := registry.Registration{
-		Name:    "config",
-		Address: fmt.Sprintf("http://localhost:%s", port),
-		Pattern: "/config/",
-		Stat:    registry.Status{Path: "/config/status"},
-	}
-
-	if err := reg.SetDefaults(); err != nil {
-		log.Println("Error creating self-referencing config registration: ", err)
-	}
-	v.registry.Register(&reg, false)
-}
-
-func (v *Vasco) statusDetail(request *restful.Request, response *restful.Response) {
-	response.WriteEntity(v.lastStatus)
-	v.refreshStatusSoon()
-}
-
-func (v *Vasco) statusUpdate() {
-	statSTime, _ := v.cache.Get("Env:STATUS_TIME")
-	statTime, _ := strconv.Atoi(statSTime)
-	v.lastStatus = v.registry.DetailedStatus()
-	vascostat := registry.StatusItem{
-		"Name":          "vasco",
-		"Port":          getEnvWithDefault("VASCO_REGISTRY", "8081"),
-		"Revision":      SourceRevision,
-		"StatusCode":    200,
-		"deploytag":     SourceDeployTag,
-		"configtype":    os.Getenv("DEPLOYTYPE"),
-		"configversion": os.Getenv("CONFIGVERSION"),
-		"pid":           os.Getpid(),
-	}
-	if ip, err := util.ExternalIP(); err != nil {
-		vascostat["IP"] = err.Error()
-	} else {
-		vascostat["IP"] = ip
-		vascostat["Address"] = "http://" + ip + ":" + vascostat["Port"].(string)
-	}
-
-	v.lastStatus = append(v.lastStatus, vascostat)
-	v.statusTimer = time.AfterFunc(time.Duration(statTime)*time.Second, v.statusUpdate)
+	return svc.Mux()
 }
 
 // Base type for a proxy that rewrites URLs
 type MatchingReverseProxy struct {
 	H http.Handler
+	V *Vasco
 }
 
 // we can inject headers this way and also handle options methods
 func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// it would be better if these came from the environment
 	acheaders := map[string]string{
-		"Access-Control-Allow-Origin":  "*",
-		"Access-Control-Allow-Methods": "POST, GET, DELETE, PUT, OPTIONS",
-		"Access-Control-Allow-Headers": strings.Join([]string{
-			"X-ANET-TOKEN", "X-ACCESS_TOKEN", "Access-Control-Allow-Origin",
-			"Authorization", "Origin", "x-requested-with", "Content-Type",
-			"Content-Range", "Content-Disposition", "Content-Description",
-		}, ","),
+		"Access-Control-Allow-Origin":  strings.Join(f.V.allowedOrigins, ","),
+		"Access-Control-Allow-Methods": strings.Join(f.V.allowedMethods, ","),
+		"Access-Control-Allow-Headers": strings.Join(f.V.allowedHeaders, ","),
 	}
 	for k, v := range acheaders {
 		w.Header().Add(k, v)
 	}
+
+	// if it's just an options request, we don't need to do anything
+	// and can short-circuit the response
 	if req.Method == "OPTIONS" {
 		log.Printf("Access-Control-Request-Headers: %s", req.Header["Access-Control-Request-Headers"])
 		return
@@ -449,7 +280,7 @@ func NewMatchingReverseProxy(v *Vasco) *MatchingReverseProxy {
 		v.registry.RewriteUrl(req.URL)
 	}
 
-	return &MatchingReverseProxy{H: &httputil.ReverseProxy{Director: director}}
+	return &MatchingReverseProxy{V: v, H: &httputil.ReverseProxy{Director: director}}
 }
 
 // goroutine that does a ListenAndServe and reports any errors on the error channel
@@ -466,16 +297,10 @@ func getEnvWithDefault(name, def string) string {
 }
 
 func main() {
-	// to see what happens in the package, uncomment the following
-	// restful.TraceLogger(log.New(os.Stdout, "[restful] ", log.LstdFlags|log.Lshortfile))
-
 	var kindOfCache string
-	var useSwagger bool
 	var proxyPort string = getEnvWithDefault("VASCO_PROXY", "8080")
 	var registryPort string = getEnvWithDefault("VASCO_REGISTRY", "8081")
 	var statusPort string = getEnvWithDefault("VASCO_STATUS", "8082")
-	var minPort string = getEnvWithDefault("MINPORT", "8100")
-	var maxPort string = getEnvWithDefault("MAXPORT", "9900")
 	var staticPath string = getEnvWithDefault("STATIC_PATH", "")
 	var expectedServices string = getEnvWithDefault("EXPECTED_SERVICES", "")
 	var redisAddr string = getEnvWithDefault("REDIS_ADDR", "")
@@ -484,11 +309,10 @@ func main() {
 	flag.StringVar(&proxyPort, "proxyport", proxyPort, "The proxy (forwarding) port.")
 	flag.StringVar(&statusPort, "statusport", statusPort, "The status port.")
 	flag.StringVar(&kindOfCache, "cache", "memory", "Specify the type of cache: memory or redis")
-	flag.BoolVar(&useSwagger, "swagger", false, "Include the swagger API documentation/testbed")
 	flag.Parse()
 
 	var err error
-	if _, err = url.Parse(redisAddr); err == nil {
+	if _, err = url.Parse(redisAddr); redisAddr != "" && err == nil {
 		kindOfCache = "redis"
 		log.Printf("kindOfCache: %s", kindOfCache)
 		log.Printf("redisAddr: %s", redisAddr)
@@ -504,71 +328,10 @@ func main() {
 		panic("Valid cache types are 'memory' and 'redis'")
 	}
 
-	v.minPort, err = strconv.Atoi(minPort)
-	if err != nil {
-		panic("minport must be a number!")
-	}
+	registryMux := v.CreateRegistryService()
+	statusMux := v.CreateStatusService()
 
-	v.maxPort, err = strconv.Atoi(maxPort)
-	if err != nil {
-		panic("maxport must be a number!")
-	}
-
-	v.curPort = v.minPort
-
-	v.PreloadFromMap(map[string]string{
-		"Env:DISCOVERY_EXPIRATION": "3600",    // the time it takes to expire a server if it disappears
-		"Env:STATUS_TIME":          "60",      // the time between status checks
-		"ProxyPort":                proxyPort, // the port number used for internal proxying
-	})
-	v.PreloadFromEnvironment("DISCOVERY_CONFIG")
-
-	restful.EnableTracing(false) // restful can be too chatty
-	restful.DefaultResponseContentType(restful.MIME_JSON)
-	wsContainer := restful.NewContainer()
-	wsContainer.Router(restful.CurlyRouter{})
-	v.RegisterContainer(wsContainer)
-
-	statusContainer := restful.NewContainer()
-	statusContainer.Router(restful.CurlyRouter{})
-	// Add container filter to enable CORS
-	cors := restful.CrossOriginResourceSharing{
-		// ExposeHeaders:  []string{"X-My-Header"},
-		AllowedHeaders: []string{"Content-Type", "Accept"},
-		CookiesAllowed: false,
-		Container:      statusContainer}
-	statusContainer.Filter(cors.Filter)
-
-	// Add container filter to respond to OPTIONS
-	// statusContainer.Filter(wsContainer.OPTIONSFilter)
-
-	v.RegisterStatusContainer(statusContainer)
-
-	if useSwagger {
-		// Optionally, you can install the Swagger Service which provides a nice Web UI on your REST API
-		// You need to download the Swagger HTML5 assets and change the FilePath location in the config below.
-		// Open http://localhost:8080/apidocs and enter http://localhost:8080/apidocs.json in the api input field.
-		config := swagger.Config{
-			WebServices:    wsContainer.RegisteredWebServices(), // you control what services are visible
-			WebServicesUrl: "http://localhost:" + registryPort,
-			ApiPath:        "/apidocs.json",
-			ApiVersion:     "0.1.0", // this should get the current git revision
-			// Someday we want to have a little more documentation, and we might want to add some additional
-			// fields to the swagger.Config object to allow us to specify some of the high-level description
-			// stuff (see getListing function).
-
-			// Specify where the UI is located
-			SwaggerPath: "/apidocs/",
-			// This needs to point to a copy of the dist folder in the docs that can be fetched with:
-			// git clone https://github.com/swagger-api/swagger-ui.git
-			// Use the dist folder there, and then change the index.html file in it to point to this.
-			// url = "http://localhost:8080/apidocs.json";
-			SwaggerFilePath: "./swagger-ui/dist",
-		}
-		swagger.RegisterSwaggerService(config, wsContainer)
-	}
-
-	// wait a few seconds and then start watching status
+	// wait a few seconds to let clients find us and then start requesting and watching status
 	v.statusTimer = time.AfterFunc(15*time.Second, v.statusUpdate)
 
 	serverErrors := make(chan error)
@@ -578,14 +341,12 @@ func main() {
 	go LandS(forwarder, serverErrors)
 
 	log.Printf("status system listening on port %s", statusPort)
-	statuser := &http.Server{Addr: ":" + statusPort, Handler: statusContainer}
+	statuser := &http.Server{Addr: ":" + statusPort, Handler: statusMux}
 	go LandS(statuser, serverErrors)
 
 	log.Printf("registry listening on port %s", registryPort)
-	server := &http.Server{Addr: ":" + registryPort, Handler: wsContainer}
+	server := &http.Server{Addr: ":" + registryPort, Handler: registryMux}
 	go LandS(server, serverErrors)
-
-	v.registerConfig(registryPort)
 
 	err = <-serverErrors
 	log.Fatal(err)

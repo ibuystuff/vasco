@@ -25,11 +25,11 @@ func TestMain(m *testing.M) {
 	memResult := m.Run()
 	c.Close()
 
-	// For now we're commenting out the redis test because
-	// redis support is not finished yet.
-	// c = NewRedisCache("localhost:6379")
-	// memResult = m.Run()
-	// c.Close()
+	if os.Getenv("TEST_REDIS") != "" {
+		c = NewRedisCache("localhost:6379")
+		memResult = m.Run()
+		c.Close()
+	}
 
 	os.Exit(memResult)
 }

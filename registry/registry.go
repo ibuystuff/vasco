@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/AchievementNetwork/go-util/util"
@@ -30,6 +29,7 @@ type Registry struct {
 	StaticPath       string
 	ExpectedServices *stringset.StringSet
 	c                cache.Cache
+	Timeout          int
 }
 
 type StatusItem map[string]interface{}
@@ -58,11 +58,12 @@ func (a byName) Less(i, j int) bool {
 // expected is a space-separated set of strings corresponding to
 // server names; status calls will include information about unexpected
 // or missing servers.
-func NewRegistry(theCache cache.Cache, staticPath string, expected string) *Registry {
+func NewRegistry(theCache cache.Cache, staticPath string, expected string, timeout int) *Registry {
 	r := Registry{
 		c:                theCache,
 		StaticPath:       staticPath,
 		ExpectedServices: stringset.New(),
+		Timeout:          timeout,
 	}
 	exp := strings.Split(expected, " ")
 	r.ExpectedServices.Add(exp...)
@@ -79,15 +80,13 @@ func NewRegistry(theCache cache.Cache, staticPath string, expected string) *Regi
 // It also stores its key in a set of items that have been stored, so that it's fast and
 // easy to walk a list of all items in the registry.
 func (r *Registry) Register(reg *Registration, expire bool) string {
-	stimeout, _ := r.c.Get("Env:DISCOVERY_EXPIRATION")
-	timeout, _ := strconv.Atoi(stimeout)
 	hash := reg.Hash()
 
 	r.c.Set(hash, reg.String())
-	if timeout != 0 && expire {
+	if r.Timeout != 0 && expire {
 		// we give clients 2 extra seconds to refresh before timeout
 		// in case they're using our timeout to trigger refresh
-		r.c.Expire(hash, timeout+2)
+		r.c.Expire(hash, r.Timeout+2)
 	}
 	r.c.SAdd("Registry:ITEMS", hash)
 	log.Printf("register %s: %v\n", hash, reg.String())
@@ -97,6 +96,7 @@ func (r *Registry) Register(reg *Registration, expire bool) string {
 func (r *Registry) Find(hash string) *Registration {
 	regtext, err := r.c.Get(hash)
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
 	reg := NewRegFromJSON(regtext)
@@ -189,11 +189,8 @@ func (r *Registry) Refresh(reg *Registration) {
 		return
 	}
 
-	stimeout, _ := r.c.Get("Env:DISCOVERY_EXPIRATION")
-	timeout, _ := strconv.Atoi(stimeout)
-
 	hash := reg.Hash()
-	r.c.Expire(hash, timeout+2)
+	r.c.Expire(hash, r.Timeout+2)
 }
 
 // given a set of possible registration options, this chooses one

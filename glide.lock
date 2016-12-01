@@ -1,17 +1,15 @@
-hash: 66143f1f1f770798ca4f3fbc66b41fc037a190d19d4ee270eaa56093e27db862
-updated: 2016-11-21T13:58:05.593655935-05:00
+hash: 7240f8dd5f03d95cf3fe139cb37d1017f1fbe138fc275ee0d9aadb4801b17c6d
+updated: 2016-12-01T13:53:47.899518319-05:00
 imports:
 - name: github.com/AchievementNetwork/go-util
-  version: 766763343f030f41f0419ee58431de3697f3ed55
+  version: b05a641f2b9a5ab8ee95f7dfe9a20c7b51a45dc2
   subpackages:
+  - boneful
   - util
 - name: github.com/AchievementNetwork/stringset
   version: 85e70f1a1394e441081377770ab4a8ce527bf547
-- name: github.com/emicklei/go-restful
-  version: 777bb3f19bcafe2575ffb2a3e46af92509ae9594
-  subpackages:
-  - log
-  - swagger
+- name: github.com/go-zoo/bone
+  version: 0237f0c5455f175a6513e21afe050e128902dc7f
 - name: gopkg.in/bsm/ratelimit.v1
   version: db14e161995a5177acef654cb0dd785e8ee8bc22
 - name: gopkg.in/redis.v3
