@@ -129,7 +129,7 @@ func (v *Vasco) statusOptions(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (v *Vasco) statusDetail(rw http.ResponseWriter, req *http.Request) {
-	util.WriteJSONPretty(rw, v.lastStatus)
+	util.WriteJSON(rw, v.lastStatus)
 	v.refreshStatusSoon()
 }
 
