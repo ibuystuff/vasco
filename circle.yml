@@ -29,10 +29,10 @@ deployment:
   staging:
     tag: /v[0-9]+(\.[0-9]+)*(-staging)/
     commands:
-      - cd $PROJECT_PATH && make ecs-deploy DEPLOYTYPE=staging ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=staging ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
       - postToSlack -username buildbot -emoji hammer "Deployed $CIRCLE_PROJECT_REPONAME $CIRCLE_TAG $CIRCLE_SHA1 to at2staging cluster"
   prod:
     tag: /v[0-9]+(\.[0-9]+)*(-prod)/
     commands:
-      - cd $PROJECT_PATH && make ecs-deploy DEPLOYTYPE=prod ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=prod ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379
       - postToSlack -username buildbot -emoji hammer "Deployed $CIRCLE_PROJECT_REPONAME $CIRCLE_TAG $CIRCLE_SHA1 to at2prod cluster"
