@@ -215,6 +215,11 @@ func (v *Vasco) CreateStatusService() *bone.Mux {
 		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusGeneral"))
 
+	svc.Route(svc.GET("/status/strict").To(v.statusStrict).
+		Doc("Returns 200 only if all expected servers are up.").
+		Returns(http.StatusInternalServerError, "At least one server is down.", nil).
+		Operation("statusStrict"))
+
 	svc.Route(svc.GET("/status/detail").To(v.statusDetail).
 		Doc("Generates detailed status information.").
 		Produces("application/json").

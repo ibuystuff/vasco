@@ -95,6 +95,26 @@ func (v *Vasco) statusGeneral(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// the status strict request returns 200 only if all expected servers are up,
+// and 500 if any of them are down.
+// The body of the response includes information on which servers are
+// being problematic.
+func (v *Vasco) statusStrict(rw http.ResponseWriter, req *http.Request) {
+	retcode := 200
+	names := []string{}
+	for _, v := range v.lastStatus {
+		stat := v["StatusCode"]
+		if stat == nil || stat.(int) < 200 || stat.(int) > 299 {
+			log.Printf("Status problem %d on %s", stat, v["Name"])
+			retcode = stat.(int)
+			names = append(names, v["Name"].(string))
+		}
+	}
+	if retcode != 200 {
+		util.WriteNewWebError(rw, retcode, "STAT-500", strings.Join(names, ","))
+	}
+}
+
 const sumfmt = "%7s %6s %26s  %s\n"
 
 func (v *Vasco) statusSummary(rw http.ResponseWriter, req *http.Request) {
