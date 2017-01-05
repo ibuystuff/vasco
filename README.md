@@ -140,7 +140,8 @@ _**Produces:**_ `[application/json]`
 
 Hash value that will be used to refresh or unregister the server later.  Something like:
 
-```"a11807a8b35440438193b436e249a8e7"
+```json
+        "a11807a8b35440438193b436e249a8e7"
 ```
 
 _**Writes:**_
