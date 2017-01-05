@@ -138,6 +138,9 @@ _**Reads:**_
 
 _**Produces:**_ `[application/json]`
 
+Hash value that will be used to refresh or unregister the server later.
+
+```""a11807a8b35440438193b436e249a8e7"```
 
 _**Writes:**_
 ```json
