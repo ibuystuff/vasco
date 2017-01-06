@@ -138,11 +138,6 @@ _**Reads:**_
 
 _**Produces:**_ `[application/json]`
 
-Hash value that will be used to refresh or unregister the server later.  Something like:
-
-```json
-        "a11807a8b35440438193b436e249a8e7"
-```
 
 _**Writes:**_
 ```json
@@ -264,6 +259,8 @@ The status portion of Vasco reports aggregated status statistics.
 
 * [statusGeneral](#statusgeneral)
 
+* [statusStrict](#statusstrict)
+
 * [statusDetail](#statusdetail)
 
 * [statusSummary](#statussummary)
@@ -309,6 +306,30 @@ _**Error returns:**_
 Code | Meaning
 ---- | --------
  500 | There is a major service problem.
+
+
+
+---
+## statusStrict
+
+### `GET /status/strict`
+
+_Returns 200 only if all expected servers are up._
+
+
+
+
+
+
+
+
+
+
+_**Error returns:**_
+
+Code | Meaning
+---- | --------
+ 500 | At least one server is down.
 
 
 
