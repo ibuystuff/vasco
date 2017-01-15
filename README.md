@@ -343,6 +343,13 @@ _Generates detailed status information._
 
 
 
+_**Parameters:**_
+
+Name | Kind | Description | DataType
+---- | ---- | ----------- | --------
+ wait | Query | if non-empty, wait for current status from all services before returning result. | string
+
+
 
 
 
