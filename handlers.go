@@ -18,10 +18,9 @@ import (
 // whenever we know registration has changed, we want to update
 // the status system soon -- but since every update also requires
 // a bunch of http traffic, we don't want to hammer the servers during
-// startup, so we just do it "soon"; if multiple calls are received
-// during this timeout, the timer is reset.
+// startup, so we just do it "soon".
 func (v *Vasco) refreshStatusSoon() {
-	v.statusTimer.Reset(5 * time.Second)
+	v.statusTimer.AtMost(2 * time.Second)
 }
 
 func (v *Vasco) register(rw http.ResponseWriter, req *http.Request) {
@@ -149,8 +148,14 @@ func (v *Vasco) statusOptions(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (v *Vasco) statusDetail(rw http.ResponseWriter, req *http.Request) {
+	qp := req.URL.Query()
+	wait := qp.Get("wait")
+	if wait != "" {
+		v.statusUpdate()
+	} else {
+		v.refreshStatusSoon()
+	}
 	util.WriteJSONPretty(rw, v.lastStatus)
-	v.refreshStatusSoon()
 }
 
 func (v *Vasco) statusUpdate() {
@@ -178,5 +183,4 @@ func (v *Vasco) statusUpdate() {
 	}
 
 	v.lastStatus = append(v.lastStatus, vascostat)
-	v.statusTimer = time.AfterFunc(time.Duration(statTime)*time.Second, v.statusUpdate)
 }
