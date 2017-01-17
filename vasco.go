@@ -30,7 +30,7 @@ type Vasco struct {
 	cache          cache.Cache
 	registry       *registry.Registry
 	lastStatus     registry.StatusBlock
-	statusTimer    *time.Timer
+	statusTimer    *LoopTimer
 	allowedMethods []string
 	allowedHeaders []string
 	allowedOrigins []string
@@ -215,8 +215,14 @@ func (v *Vasco) CreateStatusService() *bone.Mux {
 		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusGeneral"))
 
+	svc.Route(svc.GET("/status/strict").To(v.statusStrict).
+		Doc("Returns 200 only if all expected servers are up.").
+		Returns(http.StatusInternalServerError, "At least one server is down.", nil).
+		Operation("statusStrict"))
+
 	svc.Route(svc.GET("/status/detail").To(v.statusDetail).
 		Doc("Generates detailed status information.").
+		Param(boneful.QueryParameter("wait", "if non-empty, wait for current status from all services before returning result.").DataType("string").Required(false)).
 		Produces("application/json").
 		Returns(http.StatusInternalServerError, "There is a major service problem.", nil).
 		Operation("statusDetail").
@@ -332,7 +338,9 @@ func main() {
 	statusMux := v.CreateStatusService()
 
 	// wait a few seconds to let clients find us and then start requesting and watching status
-	v.statusTimer = time.AfterFunc(15*time.Second, v.statusUpdate)
+	statusTime, _ := strconv.Atoi(getEnvWithDefault("STATUS_TIME", "60"))
+	v.statusTimer = NewLoopTimer(250*time.Millisecond, time.Duration(statusTime)*time.Second, v.statusUpdate)
+	v.statusTimer.AtMost(10 * time.Second)
 
 	serverErrors := make(chan error)
 

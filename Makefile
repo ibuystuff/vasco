@@ -12,7 +12,7 @@ VASCO_STATUS ?= 8082
 REDIS_ADDR ?= localhost:6379
 MINPORT ?= 8100
 MAXPORT ?= 9900
-EXPECTED_SERVICES ?= config assess item passage pdf sas staticserver stdmirror stdtag user assessapi learnm
+EXPECTED_SERVICES ?= assess item passage pdf sas staticserver stdmirror stdtag user assessapi learnm
 STATUS_TIME ?= 60
 DISCOVERY_EXPIRATION ?= 3600
 STATIC_PATH ?= /static
@@ -64,7 +64,7 @@ ecs-register-task:
 		--port-mappings="$(VASCO_PROXY):$(VASCO_PROXY),$(VASCO_REGISTRY):$(VASCO_REGISTRY),$(VASCO_STATUS):$(VASCO_STATUS)" \
 		--ecs-task-memory=$(ECS_TASK_MEMORY) \
 		--envars="$(ENVARS)"
- 
+
 ecs-first-deploy: ecr-image ecs-create-service
 	@echo "First Deploy Complete"
 
