@@ -125,8 +125,8 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		if err != nil {
 			item["Error"] = fmt.Sprintf("GET from %s failed.", u.String())
 			item["StatusCode"] = http.StatusServiceUnavailable
-			if !reg.disabled {
-				reg.disabled = true
+			if !reg.Disabled {
+				reg.Disabled = true
 				r.c.Set(reg.Hash(), reg.String())
 				// if the service becomes unavailable, expire it in 5 minutes
 				r.c.Expire(reg.Hash(), 300)
@@ -138,8 +138,8 @@ func (r *Registry) DetailedStatus() StatusBlock {
 				item["StatusBody"] = string(body)
 			}
 			item["StatusCode"] = result.StatusCode
-			if reg.disabled {
-				reg.disabled = false
+			if reg.Disabled {
+				reg.Disabled = false
 				r.c.Set(reg.Hash(), reg.String())
 				r.c.Expire(reg.Hash(), r.Timeout+2)
 			}
@@ -147,7 +147,7 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		item["Name"] = reg.Name
 		item["Address"] = reg.Address
 		item["Port"] = ""
-		item["disabled"] = reg.disabled
+		item["disabled"] = reg.Disabled
 		hs := strings.Split(u.Host, ":")
 		if len(hs) == 2 {
 			item["Port"] = hs[1]
@@ -234,7 +234,7 @@ func (r *Registry) getAllRegistrations() []*Registration {
 		} else {
 			reg := NewRegFromJSON(regtext)
 			// don't consider disabled registrations
-			if !reg.disabled {
+			if !reg.Disabled {
 				results = append(results, reg)
 			}
 		}
