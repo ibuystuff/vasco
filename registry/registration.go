@@ -30,7 +30,7 @@ type Registration struct {
 	Pattern  string `json:"pattern"`
 	Weight   int    `json:"weight,omitempty"`
 	Stat     Status `json:"status,omitempty"`
-	disabled bool
+	Disabled bool   `json:"disabled"`
 	hash     string
 	regex    *regexp.Regexp
 	url      *url.URL
