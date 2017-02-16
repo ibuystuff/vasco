@@ -128,6 +128,8 @@ func (r *Registry) DetailedStatus() StatusBlock {
 			if !reg.disabled {
 				reg.disabled = true
 				r.c.Set(reg.Hash(), reg.String())
+				// if the service becomes unavailable, expire it in 5 minutes
+				r.c.Expire(reg.Hash(), 300)
 			}
 		} else {
 			body, err := ioutil.ReadAll(result.Body)
@@ -139,6 +141,7 @@ func (r *Registry) DetailedStatus() StatusBlock {
 			if reg.disabled {
 				reg.disabled = false
 				r.c.Set(reg.Hash(), reg.String())
+				r.c.Expire(reg.Hash(), r.Timeout+2)
 			}
 		}
 		item["Name"] = reg.Name
