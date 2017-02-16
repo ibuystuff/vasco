@@ -147,7 +147,7 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		item["Name"] = reg.Name
 		item["Address"] = reg.Address
 		item["Port"] = ""
-		item["Disabled"] = reg.Disabled
+		item["disabled"] = reg.Disabled
 		hs := strings.Split(u.Host, ":")
 		if len(hs) == 2 {
 			item["Port"] = hs[1]
@@ -233,7 +233,7 @@ func (r *Registry) getAllRegistrations() []*Registration {
 			removes = append(removes, hash)
 		} else {
 			reg := NewRegFromJSON(regtext)
-			// don't consider Disabled registrations
+			// don't consider disabled registrations
 			if !reg.Disabled {
 				results = append(results, reg)
 			}
