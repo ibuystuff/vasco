@@ -125,6 +125,7 @@ func (r *Registry) DetailedStatus() StatusBlock {
 		result, err := http.Get(u.String())
 		item := StatusItem{}
 		if err != nil {
+			fmt.Println("STATUS error:", err.Error(), u.String())
 			item["Error"] = fmt.Sprintf("GET from %s failed.", u.String())
 			item["StatusCode"] = http.StatusServiceUnavailable
 			if !reg.Disabled {
