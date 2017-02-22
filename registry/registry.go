@@ -194,9 +194,13 @@ func (r *Registry) Refresh(reg *Registration) {
 		return
 	}
 
-	// if we're refreshing we're not disabled
-	reg.Disabled = false
 	hash := reg.Hash()
+	// if we're refreshing we're not disabled
+	if reg.Disabled {
+		fmt.Println("Re-enabling ", hash)
+		reg.Disabled = false
+		r.c.Set(hash, reg.String())
+	}
 	r.c.Expire(hash, r.Timeout+2)
 }
 
