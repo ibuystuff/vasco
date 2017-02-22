@@ -80,6 +80,8 @@ func NewRegistry(theCache cache.Cache, staticPath string, expected string, timeo
 // It also stores its key in a set of items that have been stored, so that it's fast and
 // easy to walk a list of all items in the registry.
 func (r *Registry) Register(reg *Registration, expire bool) string {
+	// if we're registering we're not disabled
+	reg.Disabled = false
 	hash := reg.Hash()
 
 	r.c.Set(hash, reg.String())
@@ -192,6 +194,8 @@ func (r *Registry) Refresh(reg *Registration) {
 		return
 	}
 
+	// if we're refreshing we're not disabled
+	reg.Disabled = false
 	hash := reg.Hash()
 	r.c.Expire(hash, r.Timeout+2)
 }
