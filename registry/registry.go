@@ -228,10 +228,12 @@ func (r *Registry) choose(choices []*Registration) (best *Registration) {
 // but also removes any that have expired
 func (r *Registry) getAllRegistrations() []*Registration {
 	hashes, _ := r.c.SGet("Registry:ITEMS")
+	fmt.Println("Hashes:", hashes)
 	results := make([]*Registration, 0)
 	removes := make([]string, 0)
 	for _, hash := range hashes {
 		regtext, err := r.c.Get(hash)
+		fmt.Println("reg:", regtext, err)
 		if err != nil {
 			// the hash has expired so plan to delete the corresponding hash item
 			removes = append(removes, hash)
@@ -240,6 +242,8 @@ func (r *Registry) getAllRegistrations() []*Registration {
 			// don't consider disabled registrations
 			if !reg.Disabled {
 				results = append(results, reg)
+			} else {
+				fmt.Println("Disabled:", hash)
 			}
 		}
 	}
