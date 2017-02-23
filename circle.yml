@@ -7,9 +7,9 @@ machine:
 
 dependencies:
   pre:
-    - go get github.com/Masterminds/glide
-    - go get github.com/AchievementNetwork/gotools/cmd/ecs
-    - go get github.com/AchievementNetwork/gotools/cmd/postToSlack
+    - go get -u github.com/Masterminds/glide
+    - go get -u github.com/AchievementNetwork/gotools/cmd/ecs
+    - go get -u github.com/AchievementNetwork/gotools/cmd/postToSlack
   override:
     - go version
 
