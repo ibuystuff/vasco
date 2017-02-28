@@ -4,3 +4,4 @@ vasco
 build
 vendor
 *.swp
+.envrc
