@@ -1,15 +1,17 @@
-hash: 7240f8dd5f03d95cf3fe139cb37d1017f1fbe138fc275ee0d9aadb4801b17c6d
-updated: 2016-12-01T13:53:47.899518319-05:00
+hash: b14b383e0c46aeace53f49859c9a898154d6340d2850b4b234d0bcb5824c2c7c
+updated: 2017-05-15T10:07:22.762365656-04:00
 imports:
 - name: github.com/AchievementNetwork/go-util
-  version: b05a641f2b9a5ab8ee95f7dfe9a20c7b51a45dc2
+  version: 006634753dc289fb4ba18550ed5412b62f17ed11
   subpackages:
   - boneful
   - util
 - name: github.com/AchievementNetwork/stringset
   version: 85e70f1a1394e441081377770ab4a8ce527bf547
+- name: github.com/dgrijalva/jwt-go
+  version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/go-zoo/bone
-  version: 0237f0c5455f175a6513e21afe050e128902dc7f
+  version: fd0aebc74e908868b09ac140fb5a53cb363884c1
 - name: gopkg.in/bsm/ratelimit.v1
   version: db14e161995a5177acef654cb0dd785e8ee8bc22
 - name: gopkg.in/redis.v3
@@ -32,3 +34,4 @@ testImports:
   version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
+  - require
