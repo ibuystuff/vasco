@@ -1,0 +1,22 @@
+[
+  {
+    "path": "\\/snap\\/.*",
+    "skip": true
+  },
+  {
+    "path": "\\/pdf\\/.*",
+    "skip": true
+  },
+  {
+    "path": "(?i)\\/.*\\.(png|gif|jpeg|jpg|css|js|woff)",
+    "skip": true
+  },
+  {
+    "path": "\\/keepalive",
+    "skip": true
+  },
+  {
+    "path": "\\/version.json",
+    "skip": true
+  }
+]

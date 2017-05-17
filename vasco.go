@@ -10,6 +10,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -251,6 +252,7 @@ func (v *Vasco) CreateStatusService() *bone.Mux {
 type MatchingReverseProxy struct {
 	H http.Handler
 	V *Vasco
+	A requestAuthenticator
 }
 
 // we can inject headers this way and also handle options methods
@@ -271,6 +273,20 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	usr, err := f.A.authenticateRequest(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	// It's possible for user to legitimately be nil here in the case of paths
+	// that aren't eligible for authentication checks (e.g. assets served
+	// by the following services: static, snap, pdf). Those paths are defined
+	// in acl.json.
+	if usr != nil {
+		w.Header().Add("X-USER-ARN", usr.arn)
+	}
+
 	t := time.Now()
 	f.H.ServeHTTP(w, req)
 	dt := time.Now().Sub(t) / time.Microsecond
@@ -281,12 +297,12 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 // NewMatchingReverseProxy returns a new ReverseProxy that rewrites
 // URLs to the scheme and host provided by the registration system. It may
 // rewrite the path as well if that was specified.
-func NewMatchingReverseProxy(v *Vasco) *MatchingReverseProxy {
+func NewMatchingReverseProxy(v *Vasco, a requestAuthenticator) *MatchingReverseProxy {
 	director := func(req *http.Request) {
 		v.registry.RewriteUrl(req.URL)
 	}
 
-	return &MatchingReverseProxy{V: v, H: &httputil.ReverseProxy{Director: director}}
+	return &MatchingReverseProxy{V: v, H: &httputil.ReverseProxy{Director: director}, A: a}
 }
 
 // goroutine that does a ListenAndServe and reports any errors on the error channel
@@ -344,8 +360,17 @@ func main() {
 
 	serverErrors := make(chan error)
 
+	rulesFile, err := os.Open("acl.json")
+	if err != nil {
+		log.Fatalf("unable to load rules file because %s", err)
+	}
+	defer rulesFile.Close()
+	iam, err := newRequestAuthenticator(rulesFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Printf("reverse proxy listening on port %s", proxyPort)
-	forwarder := &http.Server{Addr: ":" + proxyPort, Handler: NewMatchingReverseProxy(v)}
+	forwarder := &http.Server{Addr: ":" + proxyPort, Handler: NewMatchingReverseProxy(v, iam)}
 	go LandS(forwarder, serverErrors)
 
 	log.Printf("status system listening on port %s", statusPort)
@@ -358,4 +383,12 @@ func main() {
 
 	err = <-serverErrors
 	log.Fatal(err)
+}
+
+func newRequestAuthenticator(r io.Reader) (*IAM, error) {
+	pac, err := newPathAccessController(r)
+	if err != nil {
+		return nil, err
+	}
+	return newIAM(pac)
 }
