@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -36,6 +37,7 @@ var _ requestAuthenticator = (*IAM)(nil)
 // Authenticates by checking the request header for the relevant, valid cookie.
 // The JWT (cookie's value) signature is checked for tempering.
 func (iam *IAM) authenticateRequest(req *http.Request) (*user, error) {
+	spew.Printf("iam.skip(%s) = %v\n", req.URL.Path, iam.skip(req.URL.Path))
 	if iam.skip(req.URL.Path) {
 		return nil, nil
 	}

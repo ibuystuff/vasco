@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // accessController interface for access control.
@@ -63,6 +65,7 @@ func (pac *pathAccessController) loadRules(r io.Reader) error {
 func (pac *pathAccessController) skip(path string) bool {
 	for _, r := range pac.rules {
 		if r.pathRegex.MatchString(path) {
+			spew.Printf("found match for %s, using regex %s, skipping\n", path, r.Path)
 			return r.Skip
 		}
 	}
