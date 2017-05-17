@@ -4,11 +4,11 @@
     "skip": true
   }, 
   {
-    "path": "\\/snap\\/.*",
+    "path": "^/snap/.*",
     "skip": true
   },
   {
-    "path": "\\/pdf\\/.*",
+    "path": "^/pdf/.*",
     "skip": true
   },
   {
