@@ -131,7 +131,8 @@ _**Reads:**_
           "pattern": "",
           "status": {
             "path": ""
-          }
+          },
+          "disabled": false
         }
 ```
 
@@ -234,7 +235,8 @@ _**Writes:**_
           "pattern": "",
           "status": {
             "path": ""
-          }
+          },
+          "disabled": false
         }
 ```
 

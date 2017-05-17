@@ -277,7 +277,7 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusForbidden)
 		log.Printf("403 on %s", req.URL.Path)
-		return
+		// return
 	}
 
 	// It's possible for user to legitimately be nil here in the case of paths
