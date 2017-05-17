@@ -1,6 +1,7 @@
 FROM alpine
 
 ADD build/vasco /
+ADD acl.json /
 
 ENV VASCO_PROXY 8080
 ENV VASCO_REGISTRY 8081
