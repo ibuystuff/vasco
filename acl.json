@@ -1,5 +1,9 @@
 [
   {
+    "path": "\\/static\\/.*",
+    "skip": true
+  },
+  {
     "path": "\\/snap\\/.*",
     "skip": true
   },
@@ -8,7 +12,7 @@
     "skip": true
   },
   {
-    "path": "(?i)\\/.*\\.(png|gif|jpeg|jpg|css|js|woff)",
+    "path": "(?i)\\/.*\\.(png|gif|jpeg|jpg|css|js|woff|map)",
     "skip": true
   },
   {
@@ -16,7 +20,7 @@
     "skip": true
   },
   {
-    "path": "\\/version.json",
+    "path": "\\/data\\/version.json",
     "skip": true
   }
 ]
