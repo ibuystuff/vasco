@@ -2,11 +2,7 @@
   {
     "path": "^/$",
     "skip": true
-  },
-  {
-    "path": "\\/static\\/.*",
-    "skip": true
-  },
+  }, 
   {
     "path": "\\/snap\\/.*",
     "skip": true
@@ -20,11 +16,7 @@
     "skip": true
   },
   {
-    "path": "\\/keepalive",
-    "skip": true
-  },
-  {
-    "path": "\\/data\\/version\\.json",
+    "path": "^/data/version.json",
     "skip": true
   }
 ]
