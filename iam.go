@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -34,19 +36,41 @@ var _ requestAuthenticator = (*IAM)(nil)
 
 // authenticateRequest skips or authenticates a request.
 // Skip when the request path matches a specified ACL path regex (see acl.go).
-// Authenticates by checking the request header for the relevant, valid cookie.
-// The JWT (cookie's value) signature is checked for tempering.
+// Authenticates by checking the request header for a valid cookie value or bearer token.
+// The JWT (cookie's value or auth header's bearer token) signature is checked for tampering.
 func (iam *IAM) authenticateRequest(req *http.Request) (*user, error) {
-	spew.Printf("iam.skip(%s) = %v\n", req.URL.Path, iam.skip(req.URL.Path))
 	if iam.skip(req.URL.Path) {
 		return nil, nil
 	}
-	return iam.userFromCookie(req)
+	var (
+		u        *user
+		err      error
+		errs     []string
+		flatErrs string
+	)
+
+	u, err = iam.userFromCookie(req)
+	if err == nil {
+		return u, nil
+	}
+	errs = append(errs, err.Error())
+
+	u, err = iam.userFromAuthHeader(req)
+	if err == nil {
+		return u, nil
+	}
+	errs = append(errs, err.Error())
+
+	for i, err := range errs {
+		flatErrs += fmt.Sprintf("err%d: %s ", i, err)
+	}
+
+	return nil, fmt.Errorf("failed to authenticate: %s", flatErrs)
 }
 
 // userFromCookie returns a User if we can find the relevant cookie in the given request.
 func (iam *IAM) userFromCookie(req *http.Request) (*user, error) {
-	token, err := iam.extractJWT(req)
+	token, err := iam.extractJWTFromCookie(req)
 	if err != nil {
 		return nil, err
 	}
@@ -62,14 +86,14 @@ func (iam *IAM) userFromCookie(req *http.Request) (*user, error) {
 	return &u, nil
 }
 
-// extractJWT extracts the JWT from the HTTP request.
+// extractJWTFromCookie extracts the JWT from the HTTP request.
 // For this to work, we rely on the presence of a cookie in the request header
 // named iam-sso-* (e.g. iam-sso-dev, iam-sso-staging, iam-sso-prod) which
 // indicates that the client has been to the IAM-SSO portal and that the user
 // has authenticated themselves. The absence of such a cookie means they've not
 // yet logged in or that their token/cookie has expired since their last login.
 // Note that this is the SSO-level cookie, not an app-specific SSO cookie.
-func (iam *IAM) extractJWT(req *http.Request) (*jwt.Token, error) {
+func (iam *IAM) extractJWTFromCookie(req *http.Request) (*jwt.Token, error) {
 	cn, err := iam.lookupSSOCookieName(req)
 	if err != nil {
 		log.Printf("cannot lookup IAM SSO cookie name, falling back to 'test' because: %s", err)
@@ -78,10 +102,59 @@ func (iam *IAM) extractJWT(req *http.Request) (*jwt.Token, error) {
 
 	c, err := req.Cookie(cn)
 	if err != nil {
-		return nil, fmt.Errorf("expected cookie named '%s' not found in the request: %s", cn, err)
+		return nil, err
 	}
 
 	return jwt.Parse(c.Value, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return iam.lookupJWTSigningKey()
+	})
+}
+
+// userFromAuthHeader returns a User if we can find the relevant authorization header in the given request.
+// We look for a Bearer token who's value is the JWT.
+func (iam *IAM) userFromAuthHeader(req *http.Request) (*user, error) {
+	token, err := iam.extractJWTFromAuthHeader(req)
+	if err != nil {
+		return nil, err
+	}
+
+	u := user{}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		u.familyName = claims["family_name"].(string)
+		u.givenName = claims["given_name"].(string)
+		u.email = claims["email"].(string)
+		u.arn = claims["arn"].(string)
+	}
+
+	return &u, nil
+}
+
+// extractJWTFromAuthHeader extracts the JWT from the HTTP request.
+// For this to work, we rely on the presence of a "Bearer" Authozation header
+// which indicates that the client has signed-in and obtained a token from IAM-SSO
+// Note that this is the SSO-level auth header, not an app-specific one.
+func (iam *IAM) extractJWTFromAuthHeader(req *http.Request) (*jwt.Token, error) {
+	auth := req.Header.Get("Authorization")
+	if auth == "" {
+		return nil, errors.New("expected authorization header")
+	}
+	if !strings.Contains(auth, "Bearer") {
+		return nil, errors.New("expected Bearer")
+	}
+	ts := strings.SplitAfter(auth, "Bearer")[1]
+	if ts == "" {
+		return nil, errors.New("expected Bearer token")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(ts))
+	if err != nil {
+		return nil, err
+	}
+
+	return jwt.Parse(string(decoded), func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}

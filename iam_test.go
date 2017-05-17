@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -39,6 +41,23 @@ func TestIAM(t *testing.T) {
 		token, signedToken := newSSOSignedTokenString(t)
 		c, token := newSSOCookie(t, token, signedToken)
 		req.AddCookie(c)
+
+		u, err := iam.authenticateRequest(req)
+		require.NoError(t, err)
+
+		claims := token.Claims.(CustomClaims)
+		assert.Equal(t, u.familyName, claims.FamilyName)
+		assert.Equal(t, u.givenName, claims.GivenName)
+		assert.Equal(t, u.email, claims.Email)
+		assert.Equal(t, u.arn, claims.ARN)
+	})
+
+	t.Run("authenticateRequestSuccessWithAuthHeader", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/sas/somepath", nil)
+		token, signedToken := newSSOSignedTokenString(t)
+		encoded := base64.StdEncoding.EncodeToString([]byte(signedToken))
+
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", encoded))
 
 		u, err := iam.authenticateRequest(req)
 		require.NoError(t, err)

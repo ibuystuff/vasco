@@ -23,7 +23,6 @@ import (
 	"github.com/AchievementNetwork/go-util/boneful"
 	"github.com/AchievementNetwork/vasco/cache"
 	"github.com/AchievementNetwork/vasco/registry"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-zoo/bone"
 )
 
@@ -275,10 +274,8 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	}
 
 	usr, err := f.A.authenticateRequest(req)
-	spew.Printf("MatchingReverseProxy.ServeHTTP | req.URL.Path = %s, authenticateRequest -> usr = %#v, err: %s\n", req.URL.Path, usr, err)
 	if err != nil {
-		spew.Println("would block with 403 here")
-		// http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
