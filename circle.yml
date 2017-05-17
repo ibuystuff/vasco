@@ -9,6 +9,7 @@ dependencies:
   pre:
     - go get -u github.com/Masterminds/glide
     - go get -u github.com/AchievementNetwork/gotools/cmd/ecs
+    - go get -u github.com/AchievementNetwork/gotools/cmd/hush
     - go get -u github.com/AchievementNetwork/gotools/cmd/postToSlack
   override:
     - go version
@@ -24,15 +25,15 @@ deployment:
   dev:
     branch: [/.*-dev/, master]
     commands:
-      - cd $PROJECT_PATH && make ecs-deploy DEPLOYTYPE=devel ECS_CLUSTER=at2dev REDIS_ADDR=at2dev.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy DEPLOYTYPE=devel ECS_CLUSTER=at2dev REDIS_ADDR=at2dev.7bywcm.0001.use1.cache.amazonaws.com:6379 IAM_TOKEN_SIGNING_KEY=`hush get iam.sso.token.signing.key.dev` IAM_SSO_COOKIE=iam-sso-dev
       - postToSlack -username buildbot -emoji hammer "Deployed $CIRCLE_PROJECT_REPONAME $CIRCLE_BRANCH $CIRCLE_SHA1 to at2dev cluster"
   staging:
     tag: /v[0-9]+(\.[0-9]+)*(-staging)/
     commands:
-      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=staging ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=staging ECS_CLUSTER=at2staging REDIS_ADDR=at2staging.7bywcm.0001.use1.cache.amazonaws.com:6379 IAM_TOKEN_SIGNING_KEY=`hush get iam.sso.token.signing.key.staging` IAM_SSO_COOKIE=iam-sso-staging
       - postToSlack -username buildbot -emoji hammer "Deployed $CIRCLE_PROJECT_REPONAME $CIRCLE_TAG $CIRCLE_SHA1 to at2staging cluster"
   prod:
     tag: /v[0-9]+(\.[0-9]+)*(-prod)/
     commands:
-      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=prod ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379
+      - cd $PROJECT_PATH && make ecs-deploy DEPLOY_TAG=$CIRCLE_TAG DEPLOYTYPE=prod ECS_CLUSTER=at2prod REDIS_ADDR=at2prod.7bywcm.0001.use1.cache.amazonaws.com:6379 IAM_TOKEN_SIGNING_KEY=`hush get iam.sso.token.signing.key.prod` IAM_SSO_COOKIE=iam-sso-prod
       - postToSlack -username buildbot -emoji hammer "Deployed $CIRCLE_PROJECT_REPONAME $CIRCLE_TAG $CIRCLE_SHA1 to at2prod cluster"
