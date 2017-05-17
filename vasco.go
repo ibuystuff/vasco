@@ -274,10 +274,27 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	}
 
 	usr, err := f.A.authenticateRequest(req)
+<<<<<<< HEAD
+<<<<<<< HEAD
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
+=======
+	spew.Printf("MatchingReverseProxy.ServeHTTP | authenticateRequest -> usr = %#v, err: %s\n", usr, err)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusForbidden)
+	// 	return
+	// }
+>>>>>>> cd7e91a... Debugging
+=======
+	spew.Printf("MatchingReverseProxy.ServeHTTP | req.URL.Path = %s, authenticateRequest -> usr = %#v, err: %s\n", req.URL.Path, usr, err)
+	if err != nil {
+		spew.Println("would block with 403 here")
+		// http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+>>>>>>> c46a262... Adjust ACL
 
 	// It's possible for user to legitimately be nil here in the case of paths
 	// that aren't eligible for authentication checks (e.g. assets served
