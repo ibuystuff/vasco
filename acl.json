@@ -1,22 +1,27 @@
 [
   {
     "path": "^/$",
-    "skip": true
+    "skip": true,
+    "description": "Match the root path."
   }, 
   {
     "path": "^/snap/.*",
-    "skip": true
+    "skip": true,
+    "description": "Match anything served by /snap."
   },
   {
     "path": "^/pdf/.*",
-    "skip": true
+    "skip": true,
+    "description": "Match anything served by /pdf."
   },
   {
     "path": "(?i)\\/.*\\.(png|gif|jpeg|jpg|css|js|woff|map)",
-    "skip": true
+    "skip": true,
+    "description": "Match any static asset."
   },
   {
     "path": "^/data/version.json",
-    "skip": true
+    "skip": true,
+    "description": "Match client version path specifically."
   }
 ]
