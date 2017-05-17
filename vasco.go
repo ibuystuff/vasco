@@ -276,6 +276,7 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	usr, err := f.A.authenticateRequest(req)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
@@ -289,10 +290,12 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 >>>>>>> cd7e91a... Debugging
 =======
 	spew.Printf("MatchingReverseProxy.ServeHTTP | req.URL.Path = %s, authenticateRequest -> usr = %#v, err: %s\n", req.URL.Path, usr, err)
+=======
+>>>>>>> 802ce93... Add support for passing creds via Bearer token
 	if err != nil {
-		spew.Println("would block with 403 here")
 		// http.Error(w, err.Error(), http.StatusForbidden)
-		return
+		log.Printf("403 on %s", req.URL.Path)
+		// return
 	}
 >>>>>>> c46a262... Adjust ACL
 
