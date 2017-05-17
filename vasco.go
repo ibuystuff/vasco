@@ -275,7 +275,8 @@ func (f MatchingReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 
 	usr, err := f.A.authenticateRequest(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		// http.Error(w, err.Error(), http.StatusForbidden)
+		log.Printf("403 on %s", req.URL.Path)
 		return
 	}
 
