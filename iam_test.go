@@ -17,8 +17,8 @@ func TestIAM(t *testing.T) {
 	os.Setenv("IAM_TOKEN_SIGNING_KEY", "test")
 	defer os.Unsetenv("IAM_TOKEN_SIGNING_KEY")
 
-	os.Setenv("DEPLOYTYPE", "test")
-	defer os.Unsetenv("DEPLOYTYPE")
+	os.Setenv("IAM_SSO_COOKIE", "iam-sso-test")
+	defer os.Unsetenv("IAM_SSO_COOKIE")
 
 	r := strings.NewReader(`[{"path": "\\/pdf\\/.*", "skip": true}]`)
 	ac, err := newPathAccessController(r)

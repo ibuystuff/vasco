@@ -66,17 +66,17 @@ func (iam *IAM) userFromCookie(req *http.Request) (*user, error) {
 // indicates that the client has been to the IAM-SSO portal and that the user
 // has authenticated themselves. The absence of such a cookie means they've not
 // yet logged in or that their token/cookie has expired since their last login.
+// Note that this is the SSO-level cookie, not an app-specific SSO cookie.
 func (iam *IAM) extractJWT(req *http.Request) (*jwt.Token, error) {
-	dt, err := iam.lookupDeployType(req)
+	cn, err := iam.lookupSSOCookieName(req)
 	if err != nil {
-		log.Printf("cannot lookup deploy type, falling back to 'test' because: %s", err)
-		dt = "test"
+		log.Printf("cannot lookup IAM SSO cookie name, falling back to 'test' because: %s", err)
+		cn = "iam-sso-test"
 	}
 
-	name := fmt.Sprintf("iam-sso-%s", dt)
-	c, err := req.Cookie(name)
+	c, err := req.Cookie(cn)
 	if err != nil {
-		return nil, fmt.Errorf("expected cookie named '%s' not found in the request: %s", name, err)
+		return nil, fmt.Errorf("expected cookie named '%s' not found in the request: %s", cn, err)
 	}
 
 	return jwt.Parse(c.Value, func(token *jwt.Token) (interface{}, error) {
@@ -87,9 +87,9 @@ func (iam *IAM) extractJWT(req *http.Request) (*jwt.Token, error) {
 	})
 }
 
-// lookupDeployType determines the kind of deploy env we're in (e.g. test, dev, staging, prod).
-func (iam *IAM) lookupDeployType(req *http.Request) (string, error) {
-	key := "DEPLOYTYPE"
+// lookupSSOCookieName determines the kind of deploy env we're in (e.g. test, dev, staging, prod).
+func (iam *IAM) lookupSSOCookieName(req *http.Request) (string, error) {
+	key := "IAM_SSO_COOKIE"
 	val := os.Getenv(key)
 	if val == "" {
 		return "", fmt.Errorf("unable to locate env var %s", key)
